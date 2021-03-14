@@ -17,9 +17,9 @@ fBW = 0.66; % Fractional Bandwidth
 fs = 160e6; % Sampling Frequency [Hz]
 
 % Transducer Parameters (spatial)
-D = 30e-3; % Aperture Size
+D = 50*lambda; % Aperture Size
 kerf = 25e-6; % Kerf [m]
-width = lambda; % Width of each element in x-direction [m]
+width = 1*lambda; % Width of each element in x-direction [m]
 height = 10e-3; % Width of each element in y-direction [m]
 tx_elem = ceil(D/width);  % Number of Elements
 rx_elem = tx_elem;  % Number of Elements
@@ -27,7 +27,7 @@ elevfoc = 20e-3; % Radius of elevation focus
 subx = 1; % Number of subdivisions for x elements
 suby = 5; % Number of subdivisions for y elements
 focus = [0 0 30e-3]; % Focal Point [m]
-x = -D/2:width:D/2;
+x = -D/2:width:D/2-width;
 
 fprintf('Wavelength λ = %g mm\n', lambda*1e3);
 fprintf('Aperture size D = %g mm\n', D*1e3);
@@ -79,10 +79,6 @@ xlabel('x (mm)');
 ylabel('Mask Thickness (mm)');
 title('Plastic Mask (Physical)');
 
-set(gcf, 'Color', 'w');
-set(gcf, 'Position', [100 100 800 400]);
-saveas(gcf, 'Mask.png');
-
 % Delay mask as temporal delays for each transducer element
 delay_mask = plastic_mask ./ c_plastic; % Gaussian distribution
 
@@ -93,6 +89,10 @@ xlabel('Element #');
 ylabel('Relative Delay (ns)');
 title('Delay Mask (Simulation)');
 
+sgtitle('Delay Mask')
+set(gcf, 'Color', 'w');
+set(gcf, 'Position', [100 100 800 400]);
+saveas(gcf, 'Mask.png');
 
 % Set the Tx delays
 
