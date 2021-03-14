@@ -122,8 +122,63 @@ set(gcf, 'Position', [100 100 800 400]);
 saveas(gcf, 'TxRxTimelines.png');
 
 %% Plot transmitted field
-
+txfield = simulate_and_plot_Tx(Tx, x);
+beam = simulate_and_plot_pulse_echo(Tx, Rx, x);
 
 %% Compute pulse-echo response by autoconvolution of the transmitted field
 
 
+%% Function definitions
+% Based on examples from RAD 235 class
+
+function txfield = simulate_and_plot_Tx(Tx, x)
+    % Hydrophone Points
+    y = zeros(size(x));
+    z = repmat((5:.5:35)*1e-3,length(x),1);
+    pos = [repmat(x',size(z,2),1) repmat(y',size(z,2),1) reshape(z,[],1)];
+
+    % Calculate Tx field    
+    [hp,start_hp] = calc_hp(Tx,pos);
+    
+    % Show image of Actual Tx beam
+    hp2 = sum(abs(hilbert(hp)),1);
+    % Normalize Tx field to see -6dB Tx beam
+    txfield = reshape(hp2,length(x),size(z,2))';
+    for xx = 1:size(txfield,1)
+      txfield(xx,:) = txfield(xx,:)./max(txfield(xx,:));
+    end
+    figure(5)
+    clf
+    imagesc(x*1e3,z(1,:)*1e3,db(txfield))
+    axis image
+    title('Normalized Transmitted Beam')
+    xlabel('Lateral Position (mm)')
+    ylabel('Depth (mm)')
+end
+
+function beam = simulate_and_plot_pulse_echo(Tx, Rx, x)
+    % This code is mostly from beam_example.m
+
+    % Hydrophone Points
+    y = zeros(size(x));
+    z = repmat((5:.5:35)*1e-3,length(x),1);
+    pos = [repmat(x',size(z,2),1) repmat(y',size(z,2),1) reshape(z,[],1)];
+
+    % Calculate pulse-echo response (B = Tx*Rx)
+    [hhp,start_hpp] = calc_hhp(Tx,Rx,pos);
+
+    % Show image of Actual Beam
+    hhp2 = sum(abs(hilbert(hhp)),1);
+    % Normalize Tx field to see -6dB Tx beam
+    beam = reshape(hhp2,length(x),size(z,2))';
+    for xx = 1:size(beam,1)
+      beam(xx,:) = beam(xx,:)./max(beam(xx,:));
+    end
+    figure(6)
+    clf
+    imagesc(x*1e3,z(1,:)*1e3,db(beam))
+    axis image
+    title('Normalized Pulse-Echo Beam')
+    xlabel('Lateral Position (mm)')
+    ylabel('Depth (mm)')
+end
