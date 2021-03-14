@@ -17,15 +17,16 @@ fBW = 0.66; % Fractional Bandwidth
 fs = 160e6; % Sampling Frequency [Hz]
 
 % Transducer Parameters (spatial)
-D = 20e-3; % Aperture Size
+D = 30e-3; % Aperture Size
 kerf = 25e-6; % Kerf [m]
-width = lambda/2; % Width of each element in x-direction [m]
+width = lambda; % Width of each element in x-direction [m]
 height = 10e-3; % Width of each element in y-direction [m]
 tx_elem = ceil(D/width);  % Number of Elements
 rx_elem = tx_elem;  % Number of Elements
 elevfoc = 20e-3; % Radius of elevation focus
 subx = 1; % Number of subdivisions for x elements
 suby = 5; % Number of subdivisions for y elements
+focus = [0 0 30e-3]; % Focal Point [m]
 
 fprintf('Wavelength λ = %g mm\n', lambda*1e3);
 fprintf('Aperture size D = %g mm\n', D*1e3);
@@ -59,6 +60,42 @@ xdc_center_focus(Rx, [0 0 0]);
 xdc_focus(Rx,0,focus);
 
 %% Generate pseudorandom delay mask
+rng('default'); s = rng; % set seed=0 for RNG
+
+% Delay mask
+c_plastic = 2750; % [m/s]
+sigma = 1/2 * lambda/c_plastic; % [s]
+delay_mask = sigma .* randn(tx_elem, 1); % Gaussian distribution
+
+figure(1);
+subplot(1, 2, 1);
+bar(delay_mask);
+axis square;
+xlabel('Element #');
+ylabel('Relative Delay (s)');
+title('Delay Mask (Simulation)');
+
+% Corresponding delay mask as varying-thickness plastic layer
+plastic_mask = c_plastic .* delay_mask;
+offset = -1.5 * min(plastic_mask);
+plastic_mask = plastic_mask + offset;
+
+subplot(1, 2, 2);
+bar(plastic_mask * 1e3);
+axis square;
+xlabel('x (a.u.)');
+ylabel('Mask Thickness (mm)');
+title('Plastic Mask (Physical)');
+
+set(gcf, 'Color', 'w');
+set(gcf, 'Position', [100 100 800 400]);
+saveas(gcf, 'Mask.png');
+
+
+% Set the Tx delays
+
+% Set the Rx delays
+% TO DO: should it be reversed in time?
 
 
 %% Plot transmitted field
