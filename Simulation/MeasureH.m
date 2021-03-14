@@ -94,11 +94,32 @@ set(gcf, 'Color', 'w');
 set(gcf, 'Position', [100 100 800 400]);
 saveas(gcf, 'Mask.png');
 
-% Set the Tx delays
+%% Set the Tx and Rx delays
+xdc_focus_times(Tx, 0, transpose(delay_mask));
+xdc_focus_times(Rx, 0, transpose(delay_mask));
+% Question: should Rx delays be reversed in time?
+Tx_timeline = xdc_get(Tx, 'focus');
+Rx_timeline = xdc_get(Rx, 'focus');
 
-% Set the Rx delays
-% TO DO: should it be reversed in time?
+figure(2);
+subplot(1, 2, 1);
+plot(Tx_timeline);
+title('Tx time line');
+xlabel('Element #');
+ylabel('Delay (s)');
+axis square tight;
 
+subplot(1, 2, 2);
+plot(Rx_timeline);
+title('Rx time line');
+xlabel('Element #');
+ylabel('Delay (s)');
+axis square tight;
+
+sgtitle('Tx and Rx timelines');
+set(gcf, 'Color', 'w');
+set(gcf, 'Position', [100 100 800 400]);
+saveas(gcf, 'TxRxTimelines.png');
 
 %% Plot transmitted field
 
