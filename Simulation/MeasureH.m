@@ -140,14 +140,13 @@ set(gcf, 'Position', [100 100 800 400]);
 saveas(gcf, 'TxRxTimelines.png');
 
 %% Plot transmitted field and pulse-echo field
-hp = simulate_and_plot_Tx(Tx, x, y, z);
-hhp = simulate_and_plot_pulse_echo(Tx, Rx, x, y, z);
+[hp, start_hp] = simulate_and_plot_Tx(Tx, x, y, z);
+[hhp, start_hpp] = simulate_and_plot_pulse_echo(Tx, Rx, x, y, z);
 K = size(hhp, 1); % how many time samples in pulse-echo data
 R = 1;
 M = K*R;
 t_array = 1/fs * (0:K-1);
 
-%%
 figure(3);
 clf;
 hold on;
@@ -173,9 +172,9 @@ zrange = zmax - zmin;
 targets.z = [zmin + 0.3*zrange, zmin + 0.5*zrange, zmin + 0.8*zrange];
 % Format used by calc_scat:
 % points should have 3 columns (x,y,z) and a row for each scatterer
-% amplitudes should be a row vector with one entry for each scatterer
+% amplitudes should be a column vector with one entry for each scatterer
 points = transpose([targets.x; targets.y; targets.z]);
-amplitudes = ones(size(targets.x));
+amplitudes = transpose(ones(size(targets.x)));
 
 % Generate v in matrix and vector forms
 Nx = tx_elem;
@@ -185,7 +184,7 @@ scene = zeros(Nz, Nx); % matrix form
 for i = 1:length(targets.x)
     index.x = ceil((targets.x(i) - xmin)/width);
     index.z = ceil((targets.z(i) - zmin)/zstep);
-    fprintf('indices: %g, %g', index.x, index.z);
+    %fprintf('indices: %g, %g\n', index.x, index.z);
     scene(index.z, index.x) = amplitudes(i);
 end
 v = scene(:); % convert matrix to column vector
@@ -210,12 +209,44 @@ set(gcf, 'Position', [100 100 800 400]);
 saveas(gcf, 'TrueImage.png');
 
 %% Single Sensor Measurement (single rotation)
-% calc scat
+[scat, start_scat] = calc_scat(Tx, Rx, points, amplitudes);
+% scat can be considered as a "single sensor measurements" because it adds
+% up the received signals from each element in the array after the
+% specified delay profile has been applied.
+% The only problem is that calc_scat() truncates the time series
+% differently than calc_hpp, so there are fewer than K elements in scat.
+% How many fewer elements? This can be found by comparing start_hp vs.
+% start_scat, which give the start times of the time-series data for hpp
+% and scat, respectively. Then we can pad scat with the correct number of leading zeros.
+% Or even easier, just zero-pad until there are K elements.
+pad_amount = K - size(scat, 1);
+scat_pad = [zeros(pad_amount, 1); scat];
 
-% sum over elements
+% Add Gaussian noise
+noise_sigma = max(scat_pad)/20;
+n = noise_sigma * randn(size(scat_pad));
+u = scat_pad + n;
 
+figure(5);
+clf;
+subplot(1, 2, 1);
+plot(t_array, scat_pad, 'DisplayName', 'Signal without noise');
+hold on;
+plot(t_array, n, 'DisplayName', 'Additive Gaussian noise');
+axis square tight;
+xlabel('t (s)');
+title('Single Sensor Measurement');
+legend();
 
-% add noise
+subplot(1, 2, 2);
+plot(u);
+axis square tight;
+xlabel('K elements');
+title('u');
+
+set(gcf, 'Color', 'w');
+set(gcf, 'Position', [100 100 800 400]);
+saveas(gcf, 'Measurement.png');
 
 %% Reconstruction (single rotation)
 % LSQR reconstruction
@@ -230,7 +261,7 @@ saveas(gcf, 'TrueImage.png');
 %% Function definitions
 % Based on examples from RAD 235 class
 
-function hp = simulate_and_plot_Tx(Tx, x, y, z)
+function [hp, start_hp] = simulate_and_plot_Tx(Tx, x, y, z)
     % Hydrophone Points
     pos = [repmat(x',size(z,2),1) repmat(y',size(z,2),1) reshape(z,[],1)];
 
@@ -255,7 +286,7 @@ function hp = simulate_and_plot_Tx(Tx, x, y, z)
     set(gcf, 'Color', 'w');
 end
 
-function hhp = simulate_and_plot_pulse_echo(Tx, Rx, x, y, z)
+function [hhp, start_hpp] = simulate_and_plot_pulse_echo(Tx, Rx, x, y, z)
     % This code is mostly from beam_example.m
 
     % Hydrophone Points
@@ -281,3 +312,4 @@ function hhp = simulate_and_plot_pulse_echo(Tx, Rx, x, y, z)
     axis equal tight;
     set(gcf, 'Color', 'w');
 end
+
