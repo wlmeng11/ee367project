@@ -19,19 +19,28 @@ fs = 160e6; % Sampling Frequency [Hz]
 % Transducer Parameters (spatial)
 D = 50*lambda; % Aperture Size
 kerf = 25e-6; % Kerf [m]
-width = 1*lambda; % Width of each element in x-direction [m]
+width = lambda; % Width of each element in x-direction [m]
 height = 10e-3; % Width of each element in y-direction [m]
 tx_elem = ceil(D/width);  % Number of Elements
 rx_elem = tx_elem;  % Number of Elements
 elevfoc = 20e-3; % Radius of elevation focus
 subx = 1; % Number of subdivisions for x elements
 suby = 5; % Number of subdivisions for y elements
-focus = [0 0 30e-3]; % Focal Point [m]
+focus = [0 0 10e-3]; % Focal Point [m]
+
+% Voxels
 x = -D/2:width:D/2-width;
+y = zeros(size(x));
+zmin = 10*lambda;
+zstep = lambda;
+zmax = 50*lambda;
+z = repmat(zmin:zstep:zmax, length(x), 1);
+N = numel(z); % how many pixels in image
 
 fprintf('Wavelength λ = %g mm\n', lambda*1e3);
 fprintf('Aperture size D = %g mm\n', D*1e3);
 fprintf('# elements = %g\n', tx_elem);
+fprintf('N = %g\n', N);
 
 % Set Field Parameters
 set_field('fs',fs);
@@ -61,12 +70,14 @@ xdc_center_focus(Rx, [0 0 0]);
 xdc_focus(Rx,0,focus);
 
 %% Generate pseudorandom delay mask
-rng('default'); s = rng; % set seed=0 for RNG
+rng('default');
+seed = 0; % seed for RNG
+s = rng(seed);
 
 % Delay mask as varying-thickness plastic layer
 c_plastic = 2750; % [m/s]
 lambda_plastic = c_plastic/fc; % [m]
-sigma = lambda/2; % [m]
+sigma = lambda_plastic/2; % [m]
 plastic_mask = sigma .* randn(tx_elem, 1); % Gaussian distribution
 offset = -1.5 * min(plastic_mask);
 plastic_mask = plastic_mask + offset;
@@ -121,20 +132,36 @@ set(gcf, 'Color', 'w');
 set(gcf, 'Position', [100 100 800 400]);
 saveas(gcf, 'TxRxTimelines.png');
 
-%% Plot transmitted field
-txfield = simulate_and_plot_Tx(Tx, x);
-beam = simulate_and_plot_pulse_echo(Tx, Rx, x);
+%% Plot transmitted field and pulse-echo field
+hp = simulate_and_plot_Tx(Tx, x, y, z);
+hhp = simulate_and_plot_pulse_echo(Tx, Rx, x, y, z);
+K = size(hhp, 1);
+t_array = 1/fs * (0:K-1);
 
-%% Compute pulse-echo response by autoconvolution of the transmitted field
+%%
+figure(3);
+clf;
+hold on;
+for n = 1:500:N
+    plot(t_array, hhp(:, n), 'DisplayName', sprintf('n=%d', n));
+end
+hold off;
+xlabel('Time (s)');
+title('Pulse-echo responses at a few example pixels');
+axis square tight;
+legend();
+set(gcf, 'Color', 'w');
+set(gcf, 'Position', [100 100 500 500]);
+saveas(gcf, 'PulseEchoWaveforms.png');
 
+%% Generate the scene to be imaged
+ 
 
 %% Function definitions
 % Based on examples from RAD 235 class
 
-function txfield = simulate_and_plot_Tx(Tx, x)
+function hp = simulate_and_plot_Tx(Tx, x, y, z)
     % Hydrophone Points
-    y = zeros(size(x));
-    z = repmat((5:.5:35)*1e-3,length(x),1);
     pos = [repmat(x',size(z,2),1) repmat(y',size(z,2),1) reshape(z,[],1)];
 
     % Calculate Tx field    
@@ -154,14 +181,14 @@ function txfield = simulate_and_plot_Tx(Tx, x)
     title('Normalized Transmitted Beam')
     xlabel('Lateral Position (mm)')
     ylabel('Depth (mm)')
+    axis equal tight;
+    set(gcf, 'Color', 'w');
 end
 
-function beam = simulate_and_plot_pulse_echo(Tx, Rx, x)
+function hhp = simulate_and_plot_pulse_echo(Tx, Rx, x, y, z)
     % This code is mostly from beam_example.m
 
     % Hydrophone Points
-    y = zeros(size(x));
-    z = repmat((5:.5:35)*1e-3,length(x),1);
     pos = [repmat(x',size(z,2),1) repmat(y',size(z,2),1) reshape(z,[],1)];
 
     % Calculate pulse-echo response (B = Tx*Rx)
@@ -181,4 +208,6 @@ function beam = simulate_and_plot_pulse_echo(Tx, Rx, x)
     title('Normalized Pulse-Echo Beam')
     xlabel('Lateral Position (mm)')
     ylabel('Depth (mm)')
+    axis equal tight;
+    set(gcf, 'Color', 'w');
 end
