@@ -164,15 +164,30 @@ set(gcf, 'Position', [100 100 500 500]);
 saveas(gcf, 'PulseEchoWaveforms.png');
 
 %% Generate a scene to be imaged
+% Coordinates of point targets
+xmin = x(1);
+xmax = x(end);
+targets.x = [xmin/2, 0, xmax/2];
+targets.y = zeros(size(targets.x));
+zrange = zmax - zmin;
+targets.z = [zmin + 0.3*zrange, zmin + 0.5*zrange, zmin + 0.8*zrange];
+% Format used by calc_scat:
+% points should have 3 columns (x,y,z) and a row for each scatterer
+% amplitudes should be a row vector with one entry for each scatterer
+points = transpose([targets.x; targets.y; targets.z]);
+amplitudes = ones(size(targets.x));
+
+% Generate v in matrix and vector forms
 Nx = tx_elem;
 Nz = N/Nx;
-%scene = randi([0 1], Nx, Nz);
-scene = zeros(Nz, Nx);
-% populate with a few point targets
-scene(floor(0.5*Nz), floor(0.5*Nx)) = 1;
-scene(floor(0.7*Nz), floor(0.3*Nx)) = 1;
-scene(floor(0.3*Nz), floor(0.8*Nx)) = 1;
-scene(floor(0.4*Nz), floor(0.2*Nx)) = 1;
+scene = zeros(Nz, Nx); % matrix form
+% populate with scatterers
+for i = 1:length(targets.x)
+    index.x = ceil((targets.x(i) - xmin)/width);
+    index.z = ceil((targets.z(i) - zmin)/zstep);
+    fprintf('indices: %g, %g', index.x, index.z);
+    scene(index.z, index.x) = amplitudes(i);
+end
 v = scene(:); % convert matrix to column vector
 
 figure(4);
@@ -182,7 +197,7 @@ axis equal tight;
 colormap gray;
 xlabel('x location');
 ylabel('z location');
-title('Scene');
+title('v (matrix form)');
 
 subplot(1, 2, 2);
 stem(v);
