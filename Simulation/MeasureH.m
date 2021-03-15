@@ -248,6 +248,16 @@ set(gcf, 'Color', 'w');
 set(gcf, 'Position', [100 100 800 400]);
 saveas(gcf, 'Measurement.png');
 
+%% Image formation by matrix-vector multiplication
+Hv = hhp * v;
+
+figure(6);
+plot(Hv);
+hold on;
+plot(u);
+hold off;
+title('Hv');
+
 %% Reconstruction (single rotation)
 % LSQR reconstruction
 
