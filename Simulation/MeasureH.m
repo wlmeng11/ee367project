@@ -3,6 +3,13 @@
 % William Meng
 % March 13, 2021
 % EE 367 Final Project
+%
+% This script is for playing around and getting each component in the
+% system to work as a proof-of-concept. Therefore, most of the code is
+% written in a serial fashion, so there may be a high degree of code
+% duplication and poor scoping. Once I get everything working here, I'll
+% package the code nicely in a more modularized fashion, and investigate
+% the behavior of the system with different parameters.
 
 clearvars; clc; close all;
 
@@ -14,7 +21,7 @@ fc = 5e6; % Carrier Frequency [Hz]
 c = 1540; % Speed of Sound [m/s]
 lambda = c/fc; % Wavelength [m]
 fBW = 0.66; % Fractional Bandwidth
-fs = 160e6; % Sampling Frequency [Hz]
+fs = fc*4; % Sampling Frequency [Hz]
 
 % Transducer Parameters (spatial)
 D = 50*lambda; % Aperture Size
@@ -135,14 +142,16 @@ saveas(gcf, 'TxRxTimelines.png');
 %% Plot transmitted field and pulse-echo field
 hp = simulate_and_plot_Tx(Tx, x, y, z);
 hhp = simulate_and_plot_pulse_echo(Tx, Rx, x, y, z);
-K = size(hhp, 1);
+K = size(hhp, 1); % how many time samples in pulse-echo data
+R = 1;
+M = K*R;
 t_array = 1/fs * (0:K-1);
 
 %%
 figure(3);
 clf;
 hold on;
-for n = 1:500:N
+for n = 1:N/10:N
     plot(t_array, hhp(:, n), 'DisplayName', sprintf('n=%d', n));
 end
 hold off;
@@ -154,8 +163,22 @@ set(gcf, 'Color', 'w');
 set(gcf, 'Position', [100 100 500 500]);
 saveas(gcf, 'PulseEchoWaveforms.png');
 
-%% Generate the scene to be imaged
- 
+%% Generate a scene to be imaged
+
+
+%% Single Sensor Measurement (single rotation)
+
+% add noise
+
+%% Reconstruction (single rotation)
+% LSQR reconstruction
+
+% ADMM reconstruction
+
+% measure PSNR
+
+%% Multiple rotations
+
 
 %% Function definitions
 % Based on examples from RAD 235 class
