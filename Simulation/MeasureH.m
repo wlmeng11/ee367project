@@ -164,9 +164,41 @@ set(gcf, 'Position', [100 100 500 500]);
 saveas(gcf, 'PulseEchoWaveforms.png');
 
 %% Generate a scene to be imaged
+Nx = tx_elem;
+Nz = N/Nx;
+%scene = randi([0 1], Nx, Nz);
+scene = zeros(Nz, Nx);
+% populate with a few point targets
+scene(floor(0.5*Nz), floor(0.5*Nx)) = 1;
+scene(floor(0.7*Nz), floor(0.3*Nx)) = 1;
+scene(floor(0.3*Nz), floor(0.8*Nx)) = 1;
+scene(floor(0.4*Nz), floor(0.2*Nx)) = 1;
+v = scene(:); % convert matrix to column vector
 
+figure(4);
+subplot(1, 2, 1);
+imagesc(scene);
+axis equal tight;
+colormap gray;
+xlabel('x location');
+ylabel('z location');
+title('Scene');
+
+subplot(1, 2, 2);
+stem(v);
+axis square tight;
+title('v (vector form)');
+
+sgtitle('True image')
+set(gcf, 'Color', 'w');
+set(gcf, 'Position', [100 100 800 400]);
+saveas(gcf, 'TrueImage.png');
 
 %% Single Sensor Measurement (single rotation)
+% calc scat
+
+% sum over elements
+
 
 % add noise
 
