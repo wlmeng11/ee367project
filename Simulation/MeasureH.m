@@ -146,6 +146,8 @@ H = hhp;
 K = size(H, 1); % how many time samples in pulse-echo data
 R = 1;
 M = K*R;
+assert(N == size(H, 2));
+compression = N/M;
 t_array = 1/fs * (0:K-1);
 
 figure(3);
@@ -325,14 +327,14 @@ imagesc(x_lnorm2D);
 axis equal tight;
 colormap gray;
 colorbar;
-title(sprintf('Least Norm Solution\nPSNR = %g dB', PSNR_lnorm));
+title(sprintf('Least Norm Solution\nCompression = %g\nPSNR = %g dB', compression, PSNR_lnorm));
 
 subplot(1, 2, 2);
 imagesc(x_pinv2D);
 axis equal tight;
 colormap gray;
 colorbar;
-title(sprintf('Moore-Penrose pseudo-inverse Solution\nPSNR = %g dB', PSNR_pinv));
+title(sprintf('Moore-Penrose pseudo-inverse Solution\nCompression = %g\nPSNR = %g dB', compression, PSNR_pinv));
 
 set(gcf, 'Color', 'w');
 set(gcf, 'Position', [100 100 1200 400]);
@@ -347,7 +349,6 @@ Atfun = @(x) reshape(At*x, imageResolution);
 AtAfun  = @(x) Atfun(Afun(x));
 opDtDx  = @(x) opDtx(opDx(x));
 
-rotations = 1;
 numItersADMM    = 25;  % number of ADMM iterations
 rho             = 10;
 lambda          = 1;
@@ -404,7 +405,7 @@ for k=1:numItersADMM
     
     subplot(2,3,[2 5]);
     imshow(x);    
-    title(['Rotations=' num2str(rotations) ', PSNR=' num2str(PSNR(k),'%3.2f') 'dB, \lambda=' num2str(lambda), ' \rho=' num2str(rho) ', noise \sigma=' num2str(sigma)]);    
+    title(['Compression=' num2str(compression) ', PSNR=' num2str(PSNR(k),'%3.2f') 'dB, \lambda=' num2str(lambda), ' \rho=' num2str(rho) ', noise \sigma=' num2str(sigma)]);    
 
     subplot(2,3,3);
     plot(1:numItersADMM, PSNR, 'LineWidth', 2, 'color', [1 0 1]);
