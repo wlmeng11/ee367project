@@ -287,12 +287,54 @@ set(gcf, 'Position', [100 100 1200 400]);
 saveas(gcf, 'Hv+n.png');
 
 %% Reconstruction (single rotation)
-% Least Norm solution
+A = hhp;
+At = hhp';
+Afun = @(x) A*x;
+Atfun = @(x) At*x;
+AAtfun  = @(x) reshape(Afun(Atfun( x )), [M 1]);
+b = u; % measurement
+I = scene; % true image
 
+% Least Norm solution
+maxItersCG = 50;
+x = pcg(AAtfun, b(:), 1e-12, maxItersCG);
+x_lnorm = Atfun(x);
+x_lnorm2D = reshape(x_lnorm, size(scene)); % reshape into 2D image
+
+MSE_lnorm  = mean( (x_lnorm - v).^2 );
+PSNR_lnorm = 10*log10(1/MSE_lnorm);
+fprintf('\nLeast Norm solution:\nMSE = %g\nPSNR = %g dB\n', MSE_lnorm, PSNR_lnorm);
+
+% Moore-Penrose pseudo-inverse
+AAtinv = pinv(A*At);
+x_pinv = Atfun(AAtinv * b);
+x_pinv2D = reshape(x_pinv, size(scene));
+
+MSE_pinv  = mean( (x_pinv - v).^2 );
+PSNR_pinv = 10*log10(1/MSE_pinv);
+fprintf('\nMoore-Pensrose psuedo-inverse:\nMSE = %g\nPSNR = %g dB\n', MSE_pinv, PSNR_pinv);
 
 % ADMM reconstruction
 
-% measure PSNR
+
+figure(7);
+subplot(1, 2, 1);
+imagesc(x_lnorm2D);
+axis equal tight;
+colormap gray;
+colorbar;
+title(sprintf('Least Norm Solution\nPSNR = %g dB', PSNR_lnorm));
+
+subplot(1, 2, 2);
+imagesc(x_pinv2D);
+axis equal tight;
+colormap gray;
+colorbar;
+title(sprintf('Moore-Penrose pseudo-inverse Solution\nPSNR = %g dB', PSNR_pinv));
+
+set(gcf, 'Color', 'w');
+set(gcf, 'Position', [100 100 1200 400]);
+saveas(gcf, 'Reconstructed.png');
 
 %% Multiple rotations
 
