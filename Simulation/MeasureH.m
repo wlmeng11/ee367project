@@ -314,9 +314,7 @@ MSE_pinv  = mean( (x_pinv - v).^2 );
 PSNR_pinv = 10*log10(1/MSE_pinv);
 fprintf('\nMoore-Pensrose psuedo-inverse:\nMSE = %g\nPSNR = %g dB\n', MSE_pinv, PSNR_pinv);
 
-% ADMM reconstruction
-
-
+% Plot results
 figure(7);
 subplot(1, 2, 1);
 imagesc(x_lnorm2D);
@@ -335,6 +333,93 @@ title(sprintf('Moore-Penrose pseudo-inverse Solution\nPSNR = %g dB', PSNR_pinv))
 set(gcf, 'Color', 'w');
 set(gcf, 'Position', [100 100 1200 400]);
 saveas(gcf, 'Reconstructed.png');
+
+
+%% ADMM with TV regularization
+imageResolution = size(scene);
+
+Afun = @(x) A*x(:);
+Atfun = @(x) reshape(At*x, imageResolution);
+AtAfun  = @(x) Atfun(Afun(x));
+opDtDx  = @(x) opDtx(opDx(x));
+
+rotations = 1;
+numItersADMM    = 25;  % number of ADMM iterations
+rho             = 10;
+lambda          = 1;
+
+x = zeros(imageResolution);
+z = zeros([imageResolution(1) imageResolution(2) 2]);
+u = zeros([imageResolution(1) imageResolution(2) 2]);
+
+Hfun = @(x) reshape(AtAfun(reshape(x,imageResolution)) + rho.*opDtDx(reshape(x,imageResolution)), [prod(imageResolution) 1]); 
+
+PSNR        = zeros([numItersADMM 1]);
+residuals   = zeros([numItersADMM 1]);
+
+for k=1:numItersADMM
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % x update 
+    
+    v = z-u;
+
+    bb = Atfun(b) + rho*opDtx(v);
+
+    maxItersCG = 25;
+    x = pcg(Hfun,bb(:),1e-12,maxItersCG,[],[],x(:));    
+    x = reshape(x, imageResolution);
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % z update - soft shrinkage
+    
+    kappa = lambda/rho;
+    v = (opDx(x)+u); 
+    z = max(1 - kappa/abs(v),0) .* v;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % u update    
+    u = u+opDx(x)-z;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % PSNR & residual
+    
+    r1 = b-Afun(x);
+    r2 = opDx(x); 
+    residuals(k) = 0.5*sum(r1(:).^2) + lambda.*sum( abs(r2(:)) );  
+    
+    MSE     = mean( (x(:)-I(:)).^2 );
+    PSNR(k) = 10*log10(1/MSE);
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % plot
+    
+    subplot(2,3,[1 4]);
+    imshow(I);    
+    title('Target Image');
+    
+    subplot(2,3,[2 5]);
+    imshow(x);    
+    title(['Rotations=' num2str(rotations) ', PSNR=' num2str(PSNR(k),'%3.2f') 'dB, \lambda=' num2str(lambda), ' \rho=' num2str(rho) ', noise \sigma=' num2str(sigma)]);    
+
+    subplot(2,3,3);
+    plot(1:numItersADMM, PSNR, 'LineWidth', 2, 'color', [1 0 1]);
+    title('PSNR');
+    xlabel('Iteration');
+    ylabel('PSNR in dB');
+    grid on;
+    ylim([10 45]);
+    
+    subplot(2,3,6);
+    plot(1:numItersADMM,log(residuals), 'LineWidth', 2);
+    title('log(residual)');
+    xlabel('Iteration');
+    ylabel('Value');
+    grid on;
+    ylim([6 9]);
+    
+    drawnow;
+end
 
 %% Multiple rotations
 
