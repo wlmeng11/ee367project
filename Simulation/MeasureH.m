@@ -142,7 +142,8 @@ saveas(gcf, 'TxRxTimelines.png');
 %% Plot transmitted field and pulse-echo field
 [hp, start_hp] = simulate_and_plot_Tx(Tx, x, y, z);
 [hhp, start_hpp] = simulate_and_plot_pulse_echo(Tx, Rx, x, y, z);
-K = size(hhp, 1); % how many time samples in pulse-echo data
+H = hhp ./ max(max(hhp)); % H is a scaled version of hhp
+K = size(H, 1); % how many time samples in pulse-echo data
 R = 1;
 M = K*R;
 t_array = 1/fs * (0:K-1);
@@ -251,7 +252,7 @@ saveas(gcf, 'TrueImage.png');
 % saveas(gcf, 'Measurement.png');
 
 %% Image formation by matrix-vector multiplication
-Hv = hhp * v;
+Hv = H * v;
 
 % Add Gaussian noise
 rng(s);
@@ -290,8 +291,8 @@ set(gcf, 'Position', [100 100 1200 400]);
 saveas(gcf, 'Hv+n.png');
 
 %% Reconstruction (single rotation)
-A = hhp;
-At = hhp';
+A = H;
+At = transpose(H);
 Afun = @(x) A*x;
 Atfun = @(x) At*x;
 AAtfun  = @(x) reshape(Afun(Atfun( x )), [M 1]);
