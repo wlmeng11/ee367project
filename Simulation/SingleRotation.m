@@ -161,7 +161,7 @@ set(gcf, 'Color', 'w');
 set(gcf, 'Position', [100 100 800 400]);
 saveas(gcf, 'EnergyFields.png');
 
-%% Image Formation Model
+%% Image Formation Matrix
 H = hhp;
 K = size(H, 1); % how many time samples in pulse-echo data
 R = 1; % number of rotations
@@ -232,13 +232,13 @@ set(gcf, 'Color', 'w');
 set(gcf, 'Position', [100 100 800 400]);
 saveas(gcf, 'TrueImage.png');
 
-%% Image formation by matrix-vector multiplication
+%% Image formation model
 Hv = H * v;
 
 % Add Gaussian noise
 rng(s);
-%noise_sigma = max(Hv)/20;
-noise_sigma = 0;
+electronic_SNR = 100;
+noise_sigma = max(Hv)/electronic_SNR;
 n = noise_sigma * randn(size(Hv));
 u = Hv + n;
 
@@ -255,7 +255,7 @@ subplot(1, 3, 2);
 plot(t_array, n, 'DisplayName', 'n');
 axis square tight;
 xlabel('t (s)');
-title('Additive Gaussian noise');
+title(sprintf('Additive Gaussian noise\nElectronic SNR = %g', electronic_SNR));
 ylim(yl); % set same ylim as first plot
 legend();
 
@@ -272,6 +272,10 @@ set(gcf, 'Position', [100 100 1200 400]);
 saveas(gcf, 'Hv+n.png');
 
 %% Reconstruction (single rotation)
+% redefine them cuz they get overwritten by ADMM code
+v = scene(:);
+u = Hv + n;
+
 A = H;
 At = transpose(H);
 Afun = @(x) A*x;
@@ -313,15 +317,16 @@ imagesc(x_pcg2D);
 axis equal tight;
 colormap gray;
 colorbar;
-title(sprintf('Least Norm (PCG) Solution\nCompression = %g\nPSNR = %g dB', compression, PSNR_lnorm));
+title(sprintf('Least Norm (PCG) Solution\nPSNR = %g dB', PSNR_lnorm));
 
 subplot(1, 3, 3);
 imagesc(x_pinv2D);
 axis equal tight;
 colormap gray;
 colorbar;
-title(sprintf('Least Norm (Pseudo-inverse) Solution\nCompression = %g\nPSNR = %g dB', compression, PSNR_pinv));
+title(sprintf('Least Norm (Pseudo-inverse) Solution\nPSNR = %g dB', PSNR_pinv));
 
+sgtitle(sprintf('Compressed Sensing Reconstruction\n# Rotations = %g\nCompression = %g\nElectronic SNR = %g', R, compression, electronic_SNR));
 set(gcf, 'Color', 'w');
 set(gcf, 'Position', [100 100 1200 400]);
 saveas(gcf, 'Reconstructed.png');
