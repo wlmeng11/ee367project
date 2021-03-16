@@ -36,7 +36,7 @@ x = -D/2:width:D/2-width;
 y = zeros(size(x));
 zmin = 10*lambda;
 zstep = lambda;
-zmax = 20*lambda;
+zmax = 40*lambda;
 z = repmat(zmin:zstep:zmax, length(x), 1);
 N = numel(z); % how many pixels in image
 
@@ -72,7 +72,7 @@ xdc_center_focus(Rx, [0 0 0]);
 xdc_focus(Rx,0,focus);
 
 %% Generate coded apertures and measure H
-R = 20; % number of rotations
+R = 4; % number of rotations
 H = 0; % placeholder to put H in global scope
 K = 0; % placeholder
 
@@ -256,7 +256,7 @@ Hv = H * v;
 
 % Add Gaussian noise
 rng(s);
-electronic_SNR = 100;
+electronic_SNR = 1000;
 noise_sigma = max(Hv)/electronic_SNR;
 n = noise_sigma * randn(size(Hv));
 u = Hv + n;
@@ -312,10 +312,10 @@ x_pcg = x_pcg - min(x_pcg);
 x_pcg = x_pcg ./ max(x_pcg); % normalize to range [0, 1]
 x_pcg2D = reshape(x_pcg, size(scene)); % reshape into 2D image
 
-MSE_lnorm  = mean( (x_pcg - v).^2 );
-PSNR_lnorm = 10*log10(1/MSE_lnorm);
-fprintf('\nLeast Norm (PCG):\nMSE = %g\nPSNR = %g dB\n', MSE_lnorm, PSNR_lnorm);
-toc
+MSE_pcg  = mean( (x_pcg - v).^2 );
+PSNR_pcg = 10*log10(1/MSE_pcg);
+fprintf('\nLeast Norm (PCG):\nMSE = %g\nPSNR = %g dB\n', MSE_pcg, PSNR_pcg);
+runtime_pcg = toc;
 
 % Least Norm solution with Moore-Penrose Pseudo-inverse
 tic
@@ -328,7 +328,7 @@ x_pinv2D = reshape(x_pinv, size(scene));
 MSE_pinv  = mean( (x_pinv - v).^2 );
 PSNR_pinv = 10*log10(1/MSE_pinv);
 fprintf('\nLeast Norm (Pseudo-inverse):\nMSE = %g\nPSNR = %g dB\n', MSE_pinv, PSNR_pinv);
-toc
+runtime_pinv = toc;
 
 % Plot true image and reconstructed images
 figure(7);
@@ -344,16 +344,16 @@ imagesc(x_pcg2D);
 axis equal tight;
 colormap gray;
 colorbar;
-title(sprintf('Least Norm (PCG) Solution\nPSNR = %g dB', PSNR_lnorm));
+title(sprintf('Least Norm (PCG) Solution\nPSNR = %g dB\nRuntime = %g s', PSNR_pcg, runtime_pcg));
 
 subplot(1, 3, 3);
 imagesc(x_pinv2D);
 axis equal tight;
 colormap gray;
 colorbar;
-title(sprintf('Least Norm (Pseudo-inverse) Solution\nPSNR = %g dB', PSNR_pinv));
+title(sprintf('Least Norm (Pseudo-inverse) Solution\nPSNR = %g dB\nRuntime = %g s', PSNR_pinv, runtime_pinv));
 
-sgtitle(sprintf('Compressed Sensing Reconstruction\n# Rotations = %g\nCompression = %g\nElectronic SNR = %g', R, compression, electronic_SNR));
+sgtitle(sprintf('Compressed Sensing Reconstruction\n# Rotations = %g\nCompression = %g\nElectronic SNR = %g = %g dB', R, compression, electronic_SNR, 10*log10(electronic_SNR)));
 set(gcf, 'Color', 'w');
 set(gcf, 'Position', [100 100 1200 400]);
 saveas(gcf, 'Reconstructed.png');
