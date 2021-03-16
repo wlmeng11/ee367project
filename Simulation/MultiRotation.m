@@ -256,7 +256,7 @@ Hv = H * v;
 
 % Add Gaussian noise
 rng(s);
-electronic_SNR = 1000;
+electronic_SNR = 1e9;
 noise_sigma = max(Hv)/electronic_SNR;
 n = noise_sigma * randn(size(Hv));
 u = Hv + n;
@@ -290,7 +290,7 @@ set(gcf, 'Color', 'w');
 set(gcf, 'Position', [100 100 1200 400]);
 saveas(gcf, 'Hv+n.png');
 
-%% Reconstruction (single rotation)
+%% Reconstruction
 % redefine them cuz they get overwritten by ADMM code
 v = scene(:);
 u = Hv + n;
@@ -303,10 +303,12 @@ AAtfun  = @(x) reshape(Afun(Atfun( x )), [M 1]);
 b = u; % measurement
 I = scene; % true image
 
+
 % Least Norm solution with Predetermined Conjugate Gradient (PCG)
 tic
-maxItersCG = 50;
-x = pcg(AAtfun, b(:), 1e-12, maxItersCG);
+maxItersCG = 1000;
+tolCG = noise_sigma;
+x = pcg(AAtfun, b(:), tolCG, maxItersCG);
 x_pcg = Atfun(x);
 x_pcg = x_pcg - min(x_pcg);
 x_pcg = x_pcg ./ max(x_pcg); % normalize to range [0, 1]
@@ -319,7 +321,8 @@ runtime_pcg = toc;
 
 % Least Norm solution with Moore-Penrose Pseudo-inverse
 tic
-AAtinv = pinv(A*At);
+tolPinv = 0;
+AAtinv = pinv(A*At, tolPinv);
 x_pinv = Atfun(AAtinv * b);
 x_pinv = x_pinv - min(x_pinv);
 x_pinv = x_pinv ./ max(x_pinv); % normalize to range [0, 1]
@@ -344,14 +347,14 @@ imagesc(x_pcg2D);
 axis equal tight;
 colormap gray;
 colorbar;
-title(sprintf('Least Norm (PCG) Solution\nPSNR = %g dB\nRuntime = %g s', PSNR_pcg, runtime_pcg));
+title(sprintf('Least Norm (PCG) Solution\nmaxItersCG = %g, tolCG = %g\nRuntime = %g s\nPSNR = %g dB', maxItersCG, tolCG, runtime_pcg, PSNR_pcg));
 
 subplot(1, 3, 3);
 imagesc(x_pinv2D);
 axis equal tight;
 colormap gray;
 colorbar;
-title(sprintf('Least Norm (Pseudo-inverse) Solution\nPSNR = %g dB\nRuntime = %g s', PSNR_pinv, runtime_pinv));
+title(sprintf('Least Norm (Pseudo-inverse) Solution\ntolPinv = %g\nRuntime = %g s\nPSNR = %g dB', tolPinv, runtime_pinv, PSNR_pinv));
 
 sgtitle(sprintf('Compressed Sensing Reconstruction\n# Rotations = %g\nCompression = %g\nElectronic SNR = %g = %g dB', R, compression, electronic_SNR, 10*log10(electronic_SNR)));
 set(gcf, 'Color', 'w');
