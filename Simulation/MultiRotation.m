@@ -5,7 +5,7 @@
 % EE 367 Final Project
 %
 % Perform 2D compressed sensing ultrasound imaging with a single
-% transducer, using a single "rotation" (ie. only one coded aperture).
+% transducer, using multiple "rotations" (ie. multiple coded apertures).
 
 clearvars; clc; close all;
 
@@ -71,7 +71,10 @@ xdc_impulse(Rx,impulseResponse);
 xdc_center_focus(Rx, [0 0 0]);
 xdc_focus(Rx,0,focus);
 
-%% Generate coded aperture
+%% Generate coded apertures and measure H
+R = 4; % number of rotations
+H = zeros(1, N); % placeholder top row. need to remove later.
+
 rng('default');
 seed = 0; % seed for RNG
 s = rng(seed);
@@ -80,89 +83,96 @@ s = rng(seed);
 c_plastic = 2750; % [m/s]
 lambda_plastic = c_plastic/fc; % [m]
 sigma = lambda_plastic/2; % [m]
-plastic_mask = sigma .* randn(tx_elem, 1); % Gaussian distribution
-offset = -1.5 * min(plastic_mask);
-plastic_mask = plastic_mask + offset;
 
-figure(1);
-subplot(1, 2, 1);
-bar(x*1000, plastic_mask * 1e3);
-axis square tight;
-xlabel('x (mm)');
-ylabel('Mask Thickness (mm)');
-title('Plastic Mask (Physical)');
+for r = 1:R
+    % Physical mask
+    plastic_mask = sigma .* randn(tx_elem, 1); % Gaussian distribution
+    offset = -1.5 * min(plastic_mask);
+    plastic_mask = plastic_mask + offset;
+    
+    % Delay mask as temporal delays for each transducer element
+    delay_mask = plastic_mask ./ c_plastic; % Gaussian distribution
+    
+    % Set the Tx and Rx delays
+    xdc_focus_times(Tx, 0, transpose(delay_mask));
+    xdc_focus_times(Rx, 0, transpose(delay_mask));
+    Tx_timeline = xdc_get(Tx, 'focus');
+    Rx_timeline = xdc_get(Rx, 'focus');
+    
+    figure(1);
+    subplot(1, 2, 1);
+    bar(x*1000, plastic_mask * 1e3);
+    axis square tight;
+    xlabel('x (mm)');
+    ylabel('Mask Thickness (mm)');
+    title('Plastic Mask (Physical)');
 
-% Delay mask as temporal delays for each transducer element
-delay_mask = plastic_mask ./ c_plastic; % Gaussian distribution
+    subplot(1, 2, 2);
+    bar(1:tx_elem, delay_mask * 1e9);
+    axis square tight;
+    xlabel('Element #');
+    ylabel('Relative Delay (ns)');
+    title('Delay Mask (Simulation)');
 
-subplot(1, 2, 2);
-bar(1:tx_elem, delay_mask * 1e9);
-axis square tight;
-xlabel('Element #');
-ylabel('Relative Delay (ns)');
-title('Delay Mask (Simulation)');
+    sgtitle(sprintf('Delay Mask, rotation %d', r));
+    set(gcf, 'Color', 'w');
+    set(gcf, 'Position', [100 100 800 400]);
+    saveas(gcf, sprintf('Mask_%d.png', r));
+    
+    % (This code is adapted from the RAD 235 homework)
+    % Sweep a hydrophone through each pixel in the image region
+    hydrophone_positions = [repmat(x',size(z,2),1) repmat(y',size(z,2),1) reshape(z,[],1)];
+    % Measure transmitted field
+    [hp, start_hp] = calc_hp(Tx, hydrophone_positions);
+    % Measure pulse-echo field
+    [hhp, start_hpp] = calc_hhp(Tx, Rx, hydrophone_positions);
 
-sgtitle('Delay Mask')
-set(gcf, 'Color', 'w');
-set(gcf, 'Position', [100 100 800 400]);
-saveas(gcf, 'Mask.png');
+    % transmitted energy at each pixel
+    hp2 = sum(abs(hilbert(hp)),1);
+    txfield = reshape(hp2,length(x),size(z,2))';
+    for xx = 1:size(txfield,1) % Normalize Tx field to see -6dB Tx beam
+      txfield(xx,:) = txfield(xx,:)./max(txfield(xx,:));
+    end
 
-% Set the Tx and Rx delays
-xdc_focus_times(Tx, 0, transpose(delay_mask));
-xdc_focus_times(Rx, 0, transpose(delay_mask));
-Tx_timeline = xdc_get(Tx, 'focus');
-Rx_timeline = xdc_get(Rx, 'focus');
+    % pulse-echo energy at each pixel
+    hhp2 = sum(abs(hilbert(hhp)),1); 
+    beam = reshape(hhp2,length(x),size(z,2))';
+    for xx = 1:size(beam,1) % Normalize Tx field to see -6dB Tx beam
+      beam(xx,:) = beam(xx,:)./max(beam(xx,:));
+    end
 
-%% Measure pulse-echo response
-% (This code is adapted from the RAD 235 homework)
+    % Plot spatial distribution of energy Tx and pulse-echo fields
+    figure(2);
+    subplot(1, 2, 1);
+    imagesc(x*1e3,z(1,:)*1e3,db(txfield))
+    axis image
+    c = colorbar;
+    c.Label.String = 'Normalized Energy (dB)';
+    title('Transmitted Field')
+    xlabel('Lateral Position (mm)')
+    ylabel('Depth (mm)')
 
-% Sweep a hydrophone through each pixel in the image region
-hydrophone_positions = [repmat(x',size(z,2),1) repmat(y',size(z,2),1) reshape(z,[],1)];
-% Measure transmitted field
-[hp, start_hp] = calc_hp(Tx, hydrophone_positions);
-% Measure pulse-echo field
-[hhp, start_hpp] = calc_hhp(Tx, Rx, hydrophone_positions);
+    subplot(1, 2, 2);
+    imagesc(x*1e3,z(1,:)*1e3,db(beam))
+    axis image
+    c = colorbar;
+    c.Label.String = 'Normalized Energy (dB)';
+    title('Pulse-Echo Field')
+    xlabel('Lateral Position (mm)')
+    ylabel('Depth (mm)')
 
-% transmitted energy at each pixel
-hp2 = sum(abs(hilbert(hp)),1);
-txfield = reshape(hp2,length(x),size(z,2))';
-for xx = 1:size(txfield,1) % Normalize Tx field to see -6dB Tx beam
-  txfield(xx,:) = txfield(xx,:)./max(txfield(xx,:));
+    sgtitle(sprintf('Rotation %d', r));
+    set(gcf, 'Color', 'w');
+    set(gcf, 'Position', [100 100 800 400]);
+    saveas(gcf, sprintf('EnergyFields_rotation%d.png', r));
+    
+    H = [H; hhp];
 end
 
-% pulse-echo energy at each pixel
-hhp2 = sum(abs(hilbert(hhp)),1); 
-beam = reshape(hhp2,length(x),size(z,2))';
-for xx = 1:size(beam,1) % Normalize Tx field to see -6dB Tx beam
-  beam(xx,:) = beam(xx,:)./max(beam(xx,:));
-end
+H = H(2:end, :); % remove placeholder row
 
-% Plot spatial distribution of energy Tx and pulse-echo fields
-figure(2);
-subplot(1, 2, 1);
-imagesc(x*1e3,z(1,:)*1e3,db(txfield))
-axis image
-c = colorbar;
-c.Label.String = 'Normalized Energy (dB)';
-title('Transmitted Field')
-xlabel('Lateral Position (mm)')
-ylabel('Depth (mm)')
-
-subplot(1, 2, 2);
-imagesc(x*1e3,z(1,:)*1e3,db(beam))
-axis image
-c = colorbar;
-c.Label.String = 'Normalized Energy (dB)';
-title('Pulse-Echo Field')
-xlabel('Lateral Position (mm)')
-ylabel('Depth (mm)')
-
-set(gcf, 'Color', 'w');
-set(gcf, 'Position', [100 100 800 400]);
-saveas(gcf, 'EnergyFields.png');
 
 %% Image Formation Matrix
-H = hhp;
 K = size(H, 1); % how many time samples in pulse-echo data
 R = 1; % number of rotations
 M = K*R;
@@ -174,11 +184,11 @@ figure(3);
 clf;
 hold on;
 for n = 1:N/10:N
-    plot(t_array, hhp(:, n), 'DisplayName', sprintf('n=%d', n));
+    plot(t_array, H(:, n), 'DisplayName', sprintf('n=%d', n));
 end
 hold off;
 xlabel('Time (s)');
-title('Pulse-echo responses at a few example pixels');
+title('A few columns of H, plotted as time series');
 axis square tight;
 legend();
 set(gcf, 'Color', 'w');
