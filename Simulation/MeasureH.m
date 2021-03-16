@@ -166,10 +166,12 @@ saveas(gcf, 'PulseEchoWaveforms.png');
 % Coordinates of point targets
 xmin = x(1);
 xmax = x(end);
-targets.x = [xmin/2, 0, xmax/2];
+%targets.x = [xmin/2, 0, xmax/2];
+targets.x = 0;
 targets.y = zeros(size(targets.x));
 zrange = zmax - zmin;
-targets.z = [zmin + 0.3*zrange, zmin + 0.5*zrange, zmin + 0.8*zrange];
+%targets.z = [zmin + 0.3*zrange, zmin + 0.5*zrange, zmin + 0.8*zrange];
+targets.z = zmin + 0.5*zrange;
 % Format used by calc_scat:
 % points should have 3 columns (x,y,z) and a row for each scatterer
 % amplitudes should be a column vector with one entry for each scatterer
@@ -219,42 +221,43 @@ saveas(gcf, 'TrueImage.png');
 % start_scat, which give the start times of the time-series data for hpp
 % and scat, respectively. Then we can pad scat with the correct number of leading zeros.
 % Or even easier, just zero-pad until there are K elements.
-pad_amount = K - size(scat, 1);
-scat_pad = [zeros(pad_amount, 1); scat];
+% pad_amount = K - size(scat, 1);
+% scat_pad = [zeros(pad_amount, 1); scat];
 
 % Add Gaussian noise
-noise_sigma = max(scat_pad)/20;
-n = noise_sigma * randn(size(scat_pad));
-u = scat_pad + n;
-
-figure(5);
-clf;
-subplot(1, 2, 1);
-plot(t_array, scat_pad, 'DisplayName', 'Signal without noise');
-hold on;
-plot(t_array, n, 'DisplayName', 'Additive Gaussian noise');
-axis square tight;
-xlabel('t (s)');
-title('Single Sensor Measurement');
-legend();
-
-subplot(1, 2, 2);
-plot(u);
-axis square tight;
-xlabel('K elements');
-title('u');
-
-set(gcf, 'Color', 'w');
-set(gcf, 'Position', [100 100 800 400]);
-saveas(gcf, 'Measurement.png');
+% noise_sigma = max(scat_pad)/20;
+% n = noise_sigma * randn(size(scat_pad));
+% u = scat_pad + n;
+% 
+% figure(5);
+% clf;
+% subplot(1, 2, 1);
+% plot(t_array, scat_pad, 'DisplayName', 'Signal without noise');
+% hold on;
+% plot(t_array, n, 'DisplayName', 'Additive Gaussian noise');
+% axis square tight;
+% xlabel('t (s)');
+% title('Single Sensor Measurement');
+% legend();
+% 
+% subplot(1, 2, 2);
+% plot(u);
+% axis square tight;
+% xlabel('K elements');
+% title('u');
+% 
+% set(gcf, 'Color', 'w');
+% set(gcf, 'Position', [100 100 800 400]);
+% saveas(gcf, 'Measurement.png');
 
 %% Image formation by matrix-vector multiplication
 Hv = hhp * v;
 
 % Add Gaussian noise
 rng(s);
-noise_sigma = max(scat_pad)/20;
-n = noise_sigma * randn(size(scat_pad));
+%noise_sigma = max(Hv)/20;
+noise_sigma = 0;
+n = noise_sigma * randn(size(Hv));
 u = Hv + n;
 
 figure(6);
@@ -420,6 +423,8 @@ for k=1:numItersADMM
     
     drawnow;
 end
+
+saveas(gcf, 'ADMM_TV.png');
 
 %% Multiple rotations
 
