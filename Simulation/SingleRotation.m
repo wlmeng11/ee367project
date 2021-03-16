@@ -237,7 +237,7 @@ Hv = H * v;
 
 % Add Gaussian noise
 rng(s);
-electronic_SNR = 100;
+electronic_SNR = 1e9;
 noise_sigma = max(Hv)/electronic_SNR;
 n = noise_sigma * randn(size(Hv));
 u = Hv + n;
