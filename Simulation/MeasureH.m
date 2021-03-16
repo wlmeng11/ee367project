@@ -40,7 +40,7 @@ x = -D/2:width:D/2-width;
 y = zeros(size(x));
 zmin = 10*lambda;
 zstep = lambda;
-zmax = 50*lambda;
+zmax = 30*lambda;
 z = repmat(zmin:zstep:zmax, length(x), 1);
 N = numel(z); % how many pixels in image
 
