@@ -332,14 +332,14 @@ imagesc(x_lnorm2D);
 axis equal tight;
 colormap gray;
 colorbar;
-title(sprintf('Least Norm Solution\nCompression = %g\nPSNR = %g dB', compression, PSNR_lnorm));
+title(sprintf('Least Norm (PCG) Solution\nCompression = %g\nPSNR = %g dB', compression, PSNR_lnorm));
 
 subplot(1, 3, 3);
 imagesc(x_pinv2D);
 axis equal tight;
 colormap gray;
 colorbar;
-title(sprintf('Moore-Penrose pseudo-inverse Solution\nCompression = %g\nPSNR = %g dB', compression, PSNR_pinv));
+title(sprintf('Least Norm (Pseudo-inverse) Solution\nCompression = %g\nPSNR = %g dB', compression, PSNR_pinv));
 
 set(gcf, 'Color', 'w');
 set(gcf, 'Position', [100 100 1200 400]);
@@ -355,8 +355,8 @@ AtAfun  = @(x) Atfun(Afun(x));
 opDtDx  = @(x) opDtx(opDx(x));
 
 numItersADMM    = 25;  % number of ADMM iterations
-rho             = 10;
-lambda          = 1;
+rho             = 1;
+lambda          = 0.01;
 
 x = zeros(imageResolution);
 z = zeros([imageResolution(1) imageResolution(2) 2]);
