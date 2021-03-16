@@ -73,7 +73,8 @@ xdc_focus(Rx,0,focus);
 
 %% Generate coded apertures and measure H
 R = 4; % number of rotations
-H = zeros(1, N); % placeholder top row. need to remove later.
+H = 0; % placeholder to put H in global scope
+K = 0; % placeholder
 
 rng('default');
 seed = 0; % seed for RNG
@@ -83,11 +84,11 @@ s = rng(seed);
 c_plastic = 2750; % [m/s]
 lambda_plastic = c_plastic/fc; % [m]
 sigma = lambda_plastic/2; % [m]
+offset = lambda_plastic/2;
 
 for r = 1:R
     % Physical mask
-    plastic_mask = sigma .* randn(tx_elem, 1); % Gaussian distribution
-    offset = -1.5 * min(plastic_mask);
+    plastic_mask = sigma .* rand(tx_elem, 1); % Uniform distribution
     plastic_mask = plastic_mask + offset;
     
     % Delay mask as temporal delays for each transducer element
@@ -166,16 +167,24 @@ for r = 1:R
     set(gcf, 'Position', [100 100 800 400]);
     saveas(gcf, sprintf('EnergyFields_rotation%d.png', r));
     
-    H = [H; hhp];
+    if r==1
+        H = hhp;
+        K = size(hhp, 1);
+    else
+        % hack to fix the mismatching number of rows
+        fprintf('Length of time series: %d = %g s\n', size(hhp, 1), size(hhp, 1)/fs);
+        pad_rows = K - size(hhp, 1);
+        hhp_padded = [zeros(pad_rows, N); hhp];
+        
+        H = [H; hhp_padded]; % add more rows to H
+        assert(K == size(hhp_padded, 1));
+    end
 end
-
-H = H(2:end, :); % remove placeholder row
 
 
 %% Image Formation Matrix
-K = size(H, 1); % how many time samples in pulse-echo data
-R = 1; % number of rotations
 M = K*R;
+assert(M == size(H, 1));
 assert(N == size(H, 2));
 compression = N/M;
 t_array = 1/fs * (0:K-1);
@@ -184,10 +193,10 @@ figure(3);
 clf;
 hold on;
 for n = 1:N/10:N
-    plot(t_array, H(:, n), 'DisplayName', sprintf('n=%d', n));
+    plot(H(:, n), 'DisplayName', sprintf('n=%d', n));
 end
 hold off;
-xlabel('Time (s)');
+xlabel('Row');
 title('A few columns of H, plotted as time series');
 axis square tight;
 legend();
