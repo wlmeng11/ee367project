@@ -169,12 +169,10 @@ saveas(gcf, 'PulseEchoWaveforms.png');
 % Coordinates of point targets
 xmin = x(1);
 xmax = x(end);
-%targets.x = [xmin/2, 0, xmax/2];
-targets.x = 0;
+targets.x = [xmin/2, 0, xmax/2];
 targets.y = zeros(size(targets.x));
 zrange = zmax - zmin;
-%targets.z = [zmin + 0.3*zrange, zmin + 0.5*zrange, zmin + 0.8*zrange];
-targets.z = zmin + 0.5*zrange;
+targets.z = [zmin + 0.3*zrange, zmin + 0.5*zrange, zmin + 0.8*zrange];
 % Format used by calc_scat:
 % points should have 3 columns (x,y,z) and a row for each scatterer
 % amplitudes should be a column vector with one entry for each scatterer
@@ -309,7 +307,7 @@ x_lnorm2D = reshape(x_lnorm, size(scene)); % reshape into 2D image
 
 MSE_lnorm  = mean( (x_lnorm - v).^2 );
 PSNR_lnorm = 10*log10(1/MSE_lnorm);
-fprintf('\nLeast Norm solution:\nMSE = %g\nPSNR = %g dB\n', MSE_lnorm, PSNR_lnorm);
+fprintf('\nLeast Norm (PCG):\nMSE = %g\nPSNR = %g dB\n', MSE_lnorm, PSNR_lnorm);
 
 % Moore-Penrose pseudo-inverse
 AAtinv = pinv(A*At);
@@ -318,7 +316,7 @@ x_pinv2D = reshape(x_pinv, size(scene));
 
 MSE_pinv  = mean( (x_pinv - v).^2 );
 PSNR_pinv = 10*log10(1/MSE_pinv);
-fprintf('\nMoore-Pensrose psuedo-inverse:\nMSE = %g\nPSNR = %g dB\n', MSE_pinv, PSNR_pinv);
+fprintf('\nLeast Norm (Pseudo-inverse):\nMSE = %g\nPSNR = %g dB\n', MSE_pinv, PSNR_pinv);
 
 % Plot results
 figure(7);
