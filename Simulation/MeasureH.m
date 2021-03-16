@@ -251,15 +251,44 @@ saveas(gcf, 'Measurement.png');
 %% Image formation by matrix-vector multiplication
 Hv = hhp * v;
 
+% Add Gaussian noise
+rng(s);
+noise_sigma = max(scat_pad)/20;
+n = noise_sigma * randn(size(scat_pad));
+u = Hv + n;
+
 figure(6);
-plot(Hv);
-hold on;
-plot(u);
-hold off;
-title('Hv');
+subplot(1, 3, 1);
+plot(t_array, Hv, 'DisplayName', 'Hv');
+axis square tight;
+xlabel('t (s)');
+title('Measurements without noise');
+yl = ylim;
+legend();
+
+subplot(1, 3, 2);
+plot(t_array, n, 'DisplayName', 'n');
+axis square tight;
+xlabel('t (s)');
+title('Additive Gaussian noise');
+ylim(yl); % set same ylim as first plot
+legend();
+
+subplot(1, 3, 3);
+plot(t_array, u, 'DisplayName', 'u = Hv + n');
+axis square tight;
+xlabel('t (s)');
+title('Measurements with noise');
+ylim(yl); % set same ylim as first plot
+legend();
+
+set(gcf, 'Color', 'w');
+set(gcf, 'Position', [100 100 1200 400]);
+saveas(gcf, 'Hv+n.png');
 
 %% Reconstruction (single rotation)
-% LSQR reconstruction
+% Least Norm solution
+
 
 % ADMM reconstruction
 
