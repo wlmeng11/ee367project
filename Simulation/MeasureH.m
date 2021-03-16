@@ -284,17 +284,17 @@ AAtfun  = @(x) reshape(Afun(Atfun( x )), [M 1]);
 b = u; % measurement
 I = scene; % true image
 
-% Least Norm solution
+% Least Norm solution with Predetermined Conjugate Gradient (PCG)
 maxItersCG = 50;
 x = pcg(AAtfun, b(:), 1e-12, maxItersCG);
-x_lnorm = Atfun(x);
-x_lnorm2D = reshape(x_lnorm, size(scene)); % reshape into 2D image
+x_pcg = Atfun(x);
+x_pcg2D = reshape(x_pcg, size(scene)); % reshape into 2D image
 
-MSE_lnorm  = mean( (x_lnorm - v).^2 );
+MSE_lnorm  = mean( (x_pcg - v).^2 );
 PSNR_lnorm = 10*log10(1/MSE_lnorm);
 fprintf('\nLeast Norm (PCG):\nMSE = %g\nPSNR = %g dB\n', MSE_lnorm, PSNR_lnorm);
 
-% Moore-Penrose pseudo-inverse
+% Least Norm solution with Moore-Penrose Pseudo-inverse
 AAtinv = pinv(A*At);
 x_pinv = Atfun(AAtinv * b);
 x_pinv2D = reshape(x_pinv, size(scene));
@@ -303,17 +303,17 @@ MSE_pinv  = mean( (x_pinv - v).^2 );
 PSNR_pinv = 10*log10(1/MSE_pinv);
 fprintf('\nLeast Norm (Pseudo-inverse):\nMSE = %g\nPSNR = %g dB\n', MSE_pinv, PSNR_pinv);
 
-% Plot results
+% Plot true image and reconstructed images
 figure(7);
 subplot(1, 3, 1);
 imagesc(scene);
 axis equal tight;
 colormap gray;
 colorbar;
-title('True image');
+title('Ground Truth');
 
 subplot(1, 3, 2);
-imagesc(x_lnorm2D);
+imagesc(x_pc2D);
 axis equal tight;
 colormap gray;
 colorbar;
@@ -332,6 +332,9 @@ saveas(gcf, 'Reconstructed.png');
 
 
 %% ADMM with TV regularization
+% This code is adapted from the EE 367 homework, but I redefined Afun and
+% Atfun to work with my image formation model.
+
 imageResolution = size(scene);
 
 Afun = @(x) A*x(:);
