@@ -75,6 +75,17 @@ xdc_focus(Rx,0,focus);
 % Set uniform delays across transducer
 delay_mask = zeros(tx_elem, 1);
 
+figure(1);
+bar(1:tx_elem, delay_mask * 1e9);
+axis square tight;
+xlabel('Element #');
+ylabel('Relative Delay (ns)');
+title('No Mask (unfocused transducer)');
+
+set(gcf, 'Color', 'w');
+set(gcf, 'Position', [100 100 400 400]);
+saveas(gcf, 'NoMask.png');
+
 % Set the Tx and Rx delays
 xdc_focus_times(Tx, 0, transpose(delay_mask));
 xdc_focus_times(Rx, 0, transpose(delay_mask));
