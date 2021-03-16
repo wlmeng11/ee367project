@@ -62,7 +62,6 @@ excitationPulse = 1;
 tshift = (size(conv(impulseResponse,conv(impulseResponse, ...
     excitationPulse)),2))/fs;
 
-
 % Tx Aperture
 Tx = xdc_focused_array(tx_elem,width,height,kerf,elevfoc,subx,suby,focus);
 xdc_impulse(Tx, impulseResponse);
@@ -76,7 +75,7 @@ xdc_impulse(Rx,impulseResponse);
 xdc_center_focus(Rx, [0 0 0]);
 xdc_focus(Rx,0,focus);
 
-%% Generate pseudorandom delay mask
+%% Generate coded apertures
 rng('default');
 seed = 0; % seed for RNG
 s = rng(seed);
@@ -112,36 +111,61 @@ set(gcf, 'Color', 'w');
 set(gcf, 'Position', [100 100 800 400]);
 saveas(gcf, 'Mask.png');
 
-%% Set the Tx and Rx delays
+% Set the Tx and Rx delays
 xdc_focus_times(Tx, 0, transpose(delay_mask));
 xdc_focus_times(Rx, 0, transpose(delay_mask));
-% Question: should Rx delays be reversed in time?
 Tx_timeline = xdc_get(Tx, 'focus');
 Rx_timeline = xdc_get(Rx, 'focus');
 
+%% Measure pulse-echo response
+% (This code is adapted from the RAD 235 homework)
+
+% Sweep a hydrophone through each pixel in the image region
+hydrophone_positions = [repmat(x',size(z,2),1) repmat(y',size(z,2),1) reshape(z,[],1)];
+% Measure transmitted field
+[hp, start_hp] = calc_hp(Tx, hydrophone_positions);
+% Measure pulse-echo field
+[hhp, start_hpp] = calc_hhp(Tx, Rx, hydrophone_positions);
+
+% transmitted energy at each pixel
+hp2 = sum(abs(hilbert(hp)),1);
+txfield = reshape(hp2,length(x),size(z,2))';
+for xx = 1:size(txfield,1) % Normalize Tx field to see -6dB Tx beam
+  txfield(xx,:) = txfield(xx,:)./max(txfield(xx,:));
+end
+
+% pulse-echo energy at each pixel
+hhp2 = sum(abs(hilbert(hhp)),1); 
+beam = reshape(hhp2,length(x),size(z,2))';
+for xx = 1:size(beam,1) % Normalize Tx field to see -6dB Tx beam
+  beam(xx,:) = beam(xx,:)./max(beam(xx,:));
+end
+
+% Plot spatial distribution of energy Tx and pulse-echo fields
 figure(2);
 subplot(1, 2, 1);
-plot(Tx_timeline);
-title('Tx time line');
-xlabel('Element #');
-ylabel('Delay (s)');
-axis square tight;
+imagesc(x*1e3,z(1,:)*1e3,db(txfield))
+axis image
+c = colorbar;
+c.Label.String = 'Normalized Energy (dB)';
+title('Transmitted Field')
+xlabel('Lateral Position (mm)')
+ylabel('Depth (mm)')
 
 subplot(1, 2, 2);
-plot(Rx_timeline);
-title('Rx time line');
-xlabel('Element #');
-ylabel('Delay (s)');
-axis square tight;
+imagesc(x*1e3,z(1,:)*1e3,db(beam))
+axis image
+c = colorbar;
+c.Label.String = 'Normalized Energy (dB)';
+title('Pulse-Echo Field')
+xlabel('Lateral Position (mm)')
+ylabel('Depth (mm)')
 
-sgtitle('Tx and Rx timelines');
 set(gcf, 'Color', 'w');
 set(gcf, 'Position', [100 100 800 400]);
-saveas(gcf, 'TxRxTimelines.png');
+saveas(gcf, 'EnergyFields.png');
 
-%% Plot transmitted field and pulse-echo field
-[hp, start_hp] = simulate_and_plot_Tx(Tx, x, y, z);
-[hhp, start_hpp] = simulate_and_plot_pulse_echo(Tx, Rx, x, y, z);
+%% Image Formation Model
 H = hhp;
 K = size(H, 1); % how many time samples in pulse-echo data
 R = 1;
@@ -164,6 +188,7 @@ legend();
 set(gcf, 'Color', 'w');
 set(gcf, 'Position', [100 100 500 500]);
 saveas(gcf, 'PulseEchoWaveforms.png');
+
 
 %% Generate a scene to be imaged
 % Coordinates of point targets
@@ -210,46 +235,6 @@ sgtitle('True image')
 set(gcf, 'Color', 'w');
 set(gcf, 'Position', [100 100 800 400]);
 saveas(gcf, 'TrueImage.png');
-
-%% Single Sensor Measurement (single rotation)
-[scat, start_scat] = calc_scat(Tx, Rx, points, amplitudes);
-% scat can be considered as a "single sensor measurements" because it adds
-% up the received signals from each element in the array after the
-% specified delay profile has been applied.
-% The only problem is that calc_scat() truncates the time series
-% differently than calc_hpp, so there are fewer than K elements in scat.
-% How many fewer elements? This can be found by comparing start_hp vs.
-% start_scat, which give the start times of the time-series data for hpp
-% and scat, respectively. Then we can pad scat with the correct number of leading zeros.
-% Or even easier, just zero-pad until there are K elements.
-% pad_amount = K - size(scat, 1);
-% scat_pad = [zeros(pad_amount, 1); scat];
-
-% Add Gaussian noise
-% noise_sigma = max(scat_pad)/20;
-% n = noise_sigma * randn(size(scat_pad));
-% u = scat_pad + n;
-% 
-% figure(5);
-% clf;
-% subplot(1, 2, 1);
-% plot(t_array, scat_pad, 'DisplayName', 'Signal without noise');
-% hold on;
-% plot(t_array, n, 'DisplayName', 'Additive Gaussian noise');
-% axis square tight;
-% xlabel('t (s)');
-% title('Single Sensor Measurement');
-% legend();
-% 
-% subplot(1, 2, 2);
-% plot(u);
-% axis square tight;
-% xlabel('K elements');
-% title('u');
-% 
-% set(gcf, 'Color', 'w');
-% set(gcf, 'Position', [100 100 800 400]);
-% saveas(gcf, 'Measurement.png');
 
 %% Image formation by matrix-vector multiplication
 Hv = H * v;
@@ -432,65 +417,7 @@ for k=1:numItersADMM
     drawnow;
 end
 
+sgtitle('ADMM TV');
 set(gcf, 'Color', 'w');
 set(gcf, 'Position', [100 100 1200 600]);
 saveas(gcf, 'ADMM_TV.png');
-
-%% Multiple rotations
-
-
-%% Function definitions
-% Based on examples from RAD 235 class
-
-function [hp, start_hp] = simulate_and_plot_Tx(Tx, x, y, z)
-    % Hydrophone Points
-    pos = [repmat(x',size(z,2),1) repmat(y',size(z,2),1) reshape(z,[],1)];
-
-    % Calculate Tx field    
-    [hp,start_hp] = calc_hp(Tx,pos);
-    
-    % Show image of Actual Tx beam
-    hp2 = sum(abs(hilbert(hp)),1);
-    % Normalize Tx field to see -6dB Tx beam
-    txfield = reshape(hp2,length(x),size(z,2))';
-    for xx = 1:size(txfield,1)
-      txfield(xx,:) = txfield(xx,:)./max(txfield(xx,:));
-    end
-    figure(5)
-    clf
-    imagesc(x*1e3,z(1,:)*1e3,db(txfield))
-    axis image
-    title('Normalized Transmitted Beam')
-    xlabel('Lateral Position (mm)')
-    ylabel('Depth (mm)')
-    axis equal tight;
-    set(gcf, 'Color', 'w');
-end
-
-function [hhp, start_hpp] = simulate_and_plot_pulse_echo(Tx, Rx, x, y, z)
-    % This code is mostly from beam_example.m
-
-    % Hydrophone Points
-    pos = [repmat(x',size(z,2),1) repmat(y',size(z,2),1) reshape(z,[],1)];
-
-    % Calculate pulse-echo response (B = Tx*Rx)
-    [hhp,start_hpp] = calc_hhp(Tx,Rx,pos);
-
-    % Show image of Actual Beam
-    hhp2 = sum(abs(hilbert(hhp)),1);
-    % Normalize Tx field to see -6dB Tx beam
-    beam = reshape(hhp2,length(x),size(z,2))';
-    for xx = 1:size(beam,1)
-      beam(xx,:) = beam(xx,:)./max(beam(xx,:));
-    end
-    figure(6)
-    clf
-    imagesc(x*1e3,z(1,:)*1e3,db(beam))
-    axis image
-    title('Normalized Pulse-Echo Beam')
-    xlabel('Lateral Position (mm)')
-    ylabel('Depth (mm)')
-    axis equal tight;
-    set(gcf, 'Color', 'w');
-end
-
