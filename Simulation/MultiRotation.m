@@ -1,7 +1,7 @@
 % MultiRotation.m
 %
 % William Meng
-% March 13, 2021
+% March 15, 2021
 % EE 367 Final Project
 %
 % Perform 2D compressed sensing ultrasound imaging with a single

@@ -1,11 +1,11 @@
-% SingleRotation.m
+% NoMask.m
 %
 % William Meng
-% March 13, 2021
+% March 16, 2021
 % EE 367 Final Project
 %
-% Perform 2D compressed sensing ultrasound imaging with a single
-% transducer, using a single "rotation" (ie. only one coded aperture).
+% Show how a single transducer without a coded mask aperture cannot measure
+% any lateral information in the image.
 
 clearvars; clc; close all;
 
@@ -36,7 +36,7 @@ x = -D/2:width:D/2-width;
 y = zeros(size(x));
 zmin = 10*lambda;
 zstep = lambda;
-zmax = 20*lambda;
+zmax = 40*lambda;
 z = repmat(zmin:zstep:zmax, length(x), 1);
 N = numel(z); % how many pixels in image
 
@@ -71,41 +71,9 @@ xdc_impulse(Rx,impulseResponse);
 xdc_center_focus(Rx, [0 0 0]);
 xdc_focus(Rx,0,focus);
 
-%% Generate coded aperture
-rng('default');
-seed = 0; % seed for RNG
-s = rng(seed);
-
-% Delay mask as varying-thickness plastic layer
-c_plastic = 2750; % [m/s]
-lambda_plastic = c_plastic/fc; % [m]
-sigma = lambda_plastic/2; % [m]
-plastic_mask = sigma .* randn(tx_elem, 1); % Gaussian distribution
-offset = -1.5 * min(plastic_mask);
-plastic_mask = plastic_mask + offset;
-
-figure(1);
-subplot(1, 2, 1);
-bar(x*1000, plastic_mask * 1e3);
-axis square tight;
-xlabel('x (mm)');
-ylabel('Mask Thickness (mm)');
-title('Plastic Mask (Physical)');
-
-% Delay mask as temporal delays for each transducer element
-delay_mask = plastic_mask ./ c_plastic; % Gaussian distribution
-
-subplot(1, 2, 2);
-bar(1:tx_elem, delay_mask * 1e9);
-axis square tight;
-xlabel('Element #');
-ylabel('Relative Delay (ns)');
-title('Delay Mask (Simulation)');
-
-sgtitle('Delay Mask')
-set(gcf, 'Color', 'w');
-set(gcf, 'Position', [100 100 800 400]);
-saveas(gcf, 'Mask.png');
+%% No mask
+% Set uniform delays across transducer
+delay_mask = zeros(tx_elem, 1);
 
 % Set the Tx and Rx delays
 xdc_focus_times(Tx, 0, transpose(delay_mask));
@@ -236,6 +204,9 @@ saveas(gcf, 'TrueImage.png');
 Hv = H * v;
 
 % Add Gaussian noise
+rng('default');
+seed = 0; % seed for RNG
+s = rng(seed);
 rng(s);
 electronic_SNR = 1e9;
 noise_sigma = max(Hv)/electronic_SNR;
@@ -285,19 +256,24 @@ b = u; % measurement
 I = scene; % true image
 
 % Least Norm solution with Predetermined Conjugate Gradient (PCG)
-maxItersCG = 50;
-x = pcg(AAtfun, b(:), 1e-12, maxItersCG);
+tic
+maxItersCG = 1000;
+tolCG = noise_sigma;
+x = pcg(AAtfun, b(:), tolCG, maxItersCG);
 x_pcg = Atfun(x);
 x_pcg = x_pcg - min(x_pcg);
 x_pcg = x_pcg ./ max(x_pcg); % normalize to range [0, 1]
 x_pcg2D = reshape(x_pcg, size(scene)); % reshape into 2D image
 
-MSE_lnorm  = mean( (x_pcg - v).^2 );
-PSNR_lnorm = 10*log10(1/MSE_lnorm);
-fprintf('\nLeast Norm (PCG):\nMSE = %g\nPSNR = %g dB\n', MSE_lnorm, PSNR_lnorm);
+MSE_pcg  = mean( (x_pcg - v).^2 );
+PSNR_pcg = 10*log10(1/MSE_pcg);
+fprintf('\nLeast Norm (PCG):\nMSE = %g\nPSNR = %g dB\n', MSE_pcg, PSNR_pcg);
+runtime_pcg = toc;
 
 % Least Norm solution with Moore-Penrose Pseudo-inverse
-AAtinv = pinv(A*At);
+tic
+tolPinv = 0;
+AAtinv = pinv(A*At, tolPinv);
 x_pinv = Atfun(AAtinv * b);
 x_pinv = x_pinv - min(x_pinv);
 x_pinv = x_pinv ./ max(x_pinv); % normalize to range [0, 1]
@@ -306,6 +282,7 @@ x_pinv2D = reshape(x_pinv, size(scene));
 MSE_pinv  = mean( (x_pinv - v).^2 );
 PSNR_pinv = 10*log10(1/MSE_pinv);
 fprintf('\nLeast Norm (Pseudo-inverse):\nMSE = %g\nPSNR = %g dB\n', MSE_pinv, PSNR_pinv);
+runtime_pinv = toc;
 
 % Plot true image and reconstructed images
 figure(7);
@@ -321,19 +298,19 @@ imagesc(x_pcg2D);
 axis equal tight;
 colormap gray;
 colorbar;
-title(sprintf('Least Norm (PCG) Solution\nPSNR = %g dB', PSNR_lnorm));
+title(sprintf('Least Norm (PCG) Solution\nmaxItersCG = %g, tolCG = %g\nRuntime = %g s\nPSNR = %g dB', maxItersCG, tolCG, runtime_pcg, PSNR_pcg));
 
 subplot(1, 3, 3);
 imagesc(x_pinv2D);
 axis equal tight;
 colormap gray;
 colorbar;
-title(sprintf('Least Norm (Pseudo-inverse) Solution\nPSNR = %g dB', PSNR_pinv));
+title(sprintf('Least Norm (Pseudo-inverse) Solution\ntolPinv = %g\nRuntime = %g s\nPSNR = %g dB', tolPinv, runtime_pinv, PSNR_pinv));
 
-sgtitle(sprintf('Compressed Sensing Reconstruction\n# Rotations = %g\nCompression = %g\nElectronic SNR = %g', R, compression, electronic_SNR));
+sgtitle(sprintf('Compressed Sensing Reconstruction\nNo Mask\nCompression = %g\nElectronic SNR = %g', compression, electronic_SNR));
 set(gcf, 'Color', 'w');
 set(gcf, 'Position', [100 100 1200 400]);
-saveas(gcf, 'Reconstructed.png');
+saveas(gcf, 'Reconstructed_NoMask.png');
 
 
 %% ADMM with TV regularization
