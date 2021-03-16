@@ -142,7 +142,7 @@ saveas(gcf, 'TxRxTimelines.png');
 %% Plot transmitted field and pulse-echo field
 [hp, start_hp] = simulate_and_plot_Tx(Tx, x, y, z);
 [hhp, start_hpp] = simulate_and_plot_pulse_echo(Tx, Rx, x, y, z);
-H = hhp ./ max(max(hhp)); % H is a scaled version of hhp
+H = hhp;
 K = size(H, 1); % how many time samples in pulse-echo data
 R = 1;
 M = K*R;
