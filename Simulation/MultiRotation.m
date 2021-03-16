@@ -72,7 +72,7 @@ xdc_center_focus(Rx, [0 0 0]);
 xdc_focus(Rx,0,focus);
 
 %% Generate coded apertures and measure H
-R = 4; % number of rotations
+R = 20; % number of rotations
 H = 0; % placeholder to put H in global scope
 K = 0; % placeholder
 
@@ -256,7 +256,7 @@ Hv = H * v;
 
 % Add Gaussian noise
 rng(s);
-electronic_SNR = 1e9;
+electronic_SNR = 100;
 noise_sigma = max(Hv)/electronic_SNR;
 n = noise_sigma * randn(size(Hv));
 u = Hv + n;
@@ -304,6 +304,7 @@ b = u; % measurement
 I = scene; % true image
 
 % Least Norm solution with Predetermined Conjugate Gradient (PCG)
+tic
 maxItersCG = 50;
 x = pcg(AAtfun, b(:), 1e-12, maxItersCG);
 x_pcg = Atfun(x);
@@ -314,8 +315,10 @@ x_pcg2D = reshape(x_pcg, size(scene)); % reshape into 2D image
 MSE_lnorm  = mean( (x_pcg - v).^2 );
 PSNR_lnorm = 10*log10(1/MSE_lnorm);
 fprintf('\nLeast Norm (PCG):\nMSE = %g\nPSNR = %g dB\n', MSE_lnorm, PSNR_lnorm);
+toc
 
 % Least Norm solution with Moore-Penrose Pseudo-inverse
+tic
 AAtinv = pinv(A*At);
 x_pinv = Atfun(AAtinv * b);
 x_pinv = x_pinv - min(x_pinv);
@@ -325,6 +328,7 @@ x_pinv2D = reshape(x_pinv, size(scene));
 MSE_pinv  = mean( (x_pinv - v).^2 );
 PSNR_pinv = 10*log10(1/MSE_pinv);
 fprintf('\nLeast Norm (Pseudo-inverse):\nMSE = %g\nPSNR = %g dB\n', MSE_pinv, PSNR_pinv);
+toc
 
 % Plot true image and reconstructed images
 figure(7);
