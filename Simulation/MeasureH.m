@@ -322,14 +322,21 @@ fprintf('\nMoore-Pensrose psuedo-inverse:\nMSE = %g\nPSNR = %g dB\n', MSE_pinv, 
 
 % Plot results
 figure(7);
-subplot(1, 2, 1);
+subplot(1, 3, 1);
+imagesc(scene);
+axis equal tight;
+colormap gray;
+colorbar;
+title('True image');
+
+subplot(1, 3, 2);
 imagesc(x_lnorm2D);
 axis equal tight;
 colormap gray;
 colorbar;
 title(sprintf('Least Norm Solution\nCompression = %g\nPSNR = %g dB', compression, PSNR_lnorm));
 
-subplot(1, 2, 2);
+subplot(1, 3, 3);
 imagesc(x_pinv2D);
 axis equal tight;
 colormap gray;
@@ -362,6 +369,7 @@ Hfun = @(x) reshape(AtAfun(reshape(x,imageResolution)) + rho.*opDtDx(reshape(x,i
 PSNR        = zeros([numItersADMM 1]);
 residuals   = zeros([numItersADMM 1]);
 
+figure(8);
 for k=1:numItersADMM
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -426,6 +434,8 @@ for k=1:numItersADMM
     drawnow;
 end
 
+set(gcf, 'Color', 'w');
+set(gcf, 'Position', [100 100 1200 600]);
 saveas(gcf, 'ADMM_TV.png');
 
 %% Multiple rotations
