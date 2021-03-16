@@ -1,15 +1,11 @@
-% MeasureH.m
+% SingleRotation.m
 %
 % William Meng
 % March 13, 2021
 % EE 367 Final Project
 %
-% This script is for playing around and getting each component in the
-% system to work as a proof-of-concept. Therefore, most of the code is
-% written in a serial fashion, so there may be a high degree of code
-% duplication and poor scoping. Once I get everything working here, I'll
-% package the code nicely in a more modularized fashion, and investigate
-% the behavior of the system with different parameters.
+% Perform 2D compressed sensing ultrasound imaging with a single
+% transducer, using a single "rotation" (ie. only one coded aperture).
 
 clearvars; clc; close all;
 
@@ -75,7 +71,7 @@ xdc_impulse(Rx,impulseResponse);
 xdc_center_focus(Rx, [0 0 0]);
 xdc_focus(Rx,0,focus);
 
-%% Generate coded apertures
+%% Generate coded aperture
 rng('default');
 seed = 0; % seed for RNG
 s = rng(seed);
@@ -168,7 +164,7 @@ saveas(gcf, 'EnergyFields.png');
 %% Image Formation Model
 H = hhp;
 K = size(H, 1); % how many time samples in pulse-echo data
-R = 1;
+R = 1; % number of rotations
 M = K*R;
 assert(N == size(H, 2));
 compression = N/M;
@@ -313,7 +309,7 @@ colorbar;
 title('Ground Truth');
 
 subplot(1, 3, 2);
-imagesc(x_pc2D);
+imagesc(x_pcg2D);
 axis equal tight;
 colormap gray;
 colorbar;
