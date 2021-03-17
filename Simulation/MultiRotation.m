@@ -387,7 +387,7 @@ lambda          = 0.01;
 
 b = Afun(scene) + n;
 
-x = randn(imageResolution);
+x = zeros(imageResolution);
 z = zeros([imageResolution(1) imageResolution(2) 2]);
 u = zeros([imageResolution(1) imageResolution(2) 2]);
 
@@ -410,9 +410,10 @@ for k=1:numItersADMM
     maxItersCG = 25;
     x = pcg(Hfun,bb(:), noise_sigma, maxItersCG,[],[],x(:));    
     x = reshape(x, imageResolution);
-    % need to normalize to have max amplitude of 1
+    % need to normalize displayed image to range [0, 1]
     % otherwise all pixel values will be too small
-    x = x ./ max(max(x));
+    x_scaled = x - min(min(x));
+    x_scaled = x_scaled ./ max(max(x_scaled));
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % z update - soft shrinkage
@@ -432,7 +433,7 @@ for k=1:numItersADMM
     r2 = opDx(x); 
     residuals(k) = 0.5*sum(r1(:).^2) + lambda.*sum( abs(r2(:)) );  
     
-    MSE     = mean( (x(:)-I(:)).^2 );
+    MSE     = mean( (x_scaled(:)-I(:)).^2 );
     PSNR(k) = 10*log10(1/MSE);
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -443,7 +444,7 @@ for k=1:numItersADMM
     title('Target Image');
     
     subplot(2,3,[2 5]);
-    imshow(x);    
+    imshow(x_scaled);    
     title(['PSNR=' num2str(PSNR(k),'%3.2f') 'dB, \lambda=' num2str(lambda), ' \rho=' num2str(rho) ', noise \sigma=' num2str(sigma)]);    
 
     subplot(2,3,3);
