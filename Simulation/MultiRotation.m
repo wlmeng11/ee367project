@@ -72,7 +72,7 @@ xdc_center_focus(Rx, [0 0 0]);
 xdc_focus(Rx,0,focus);
 
 %% Generate coded apertures and measure H
-R = 4; % number of rotations
+R = 10; % number of rotations
 H = 0; % placeholder to put H in global scope
 K = 0; % placeholder
 
@@ -170,7 +170,7 @@ for r = 1:R
     if r==1
         H = hhp;
         K = size(hhp, 1);
-    else
+    elseif size(hhp, 1) < K
         % hack to fix the mismatching number of rows
         fprintf('Length of time series: %d = %g s\n', size(hhp, 1), size(hhp, 1)/fs);
         pad_rows = K - size(hhp, 1);
@@ -178,6 +178,12 @@ for r = 1:R
         
         H = [H; hhp_padded]; % add more rows to H
         assert(K == size(hhp_padded, 1));
+    elseif size(hhp, 1) >= K
+        % hack to fix the mismatching number of rows
+        fprintf('Length of time series: %d = %g s\n', size(hhp, 1), size(hhp, 1)/fs);
+        H = [H; hhp(1:K, :)];
+    else
+        fprintf('Error: Failed to add rows to H');
     end
 end
 
@@ -319,20 +325,6 @@ PSNR_pcg = 10*log10(1/MSE_pcg);
 fprintf('\nLeast Norm (PCG):\nMSE = %g\nPSNR = %g dB\n', MSE_pcg, PSNR_pcg);
 runtime_pcg = toc;
 
-% Least Norm solution with Moore-Penrose Pseudo-inverse
-tic
-tolPinv = 0;
-AAtinv = pinv(A*At, tolPinv);
-x_pinv = Atfun(AAtinv * b);
-x_pinv = x_pinv - min(x_pinv);
-x_pinv = x_pinv ./ max(x_pinv); % normalize to range [0, 1]
-x_pinv2D = reshape(x_pinv, size(scene));
-
-MSE_pinv  = mean( (x_pinv - v).^2 );
-PSNR_pinv = 10*log10(1/MSE_pinv);
-fprintf('\nLeast Norm (Pseudo-inverse):\nMSE = %g\nPSNR = %g dB\n', MSE_pinv, PSNR_pinv);
-runtime_pinv = toc;
-
 % Plot true image and reconstructed images
 figure(7);
 subplot(1, 3, 1);
@@ -348,6 +340,21 @@ axis equal tight;
 colormap gray;
 colorbar;
 title(sprintf('Least Norm (PCG) Solution\nmaxItersCG = %g, tolCG = %g\nRuntime = %g s\nPSNR = %g dB', maxItersCG, tolCG, runtime_pcg, PSNR_pcg));
+
+
+% Least Norm solution with Moore-Penrose Pseudo-inverse
+tic
+tolPinv = 0;
+AAtinv = pinv(A*At, tolPinv);
+x_pinv = Atfun(AAtinv * b);
+x_pinv = x_pinv - min(x_pinv);
+x_pinv = x_pinv ./ max(x_pinv); % normalize to range [0, 1]
+x_pinv2D = reshape(x_pinv, size(scene));
+
+MSE_pinv  = mean( (x_pinv - v).^2 );
+PSNR_pinv = 10*log10(1/MSE_pinv);
+fprintf('\nLeast Norm (Pseudo-inverse):\nMSE = %g\nPSNR = %g dB\n', MSE_pinv, PSNR_pinv);
+runtime_pinv = toc;
 
 subplot(1, 3, 3);
 imagesc(x_pinv2D);
