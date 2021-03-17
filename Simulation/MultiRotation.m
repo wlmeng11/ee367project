@@ -435,7 +435,8 @@ for k=1:numItersADMM
     
     MSE     = mean( (x_scaled(:)-I(:)).^2 );
     PSNR(k) = 10*log10(1/MSE);
-    
+    runtime_ADMM = toc;
+
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % plot
     
@@ -445,7 +446,7 @@ for k=1:numItersADMM
     
     subplot(2,3,[2 5]);
     imshow(x_scaled);    
-    title(sprintf('\\lambda = %g, \\rho = %g\nPSNR = %g dB', lambda, rho, PSNR(k)));
+    title(sprintf('\\lambda = %g, \\rho = %g\nPSNR = %g dB\nRuntime = %g s', lambda, rho, PSNR(k), runtime_ADMM));
 
     subplot(2,3,3);
     plot(1:numItersADMM, PSNR, 'LineWidth', 2, 'color', [1 0 1]);
@@ -465,8 +466,7 @@ for k=1:numItersADMM
     
     drawnow;
     
-    runtime_ADMM = toc;
-    sgtitle(sprintf('ADMM TV\n# Rotations = %g\nCompression = %g\nElectronic SNR = %g = %g dB\nRuntime = %g s', R, compression, electronic_SNR, 10*log10(electronic_SNR), runtime_ADMM));
+    sgtitle(sprintf('ADMM TV\n# Rotations = %g\nCompression = %g\nElectronic SNR = %g = %g dB', R, compression, electronic_SNR, 10*log10(electronic_SNR)));
     set(gcf, 'Color', 'w');
     set(gcf, 'Position', [100 100 1200 600]);
 end

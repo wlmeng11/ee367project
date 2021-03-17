@@ -334,95 +334,106 @@ saveas(gcf, 'Reconstructed_NoMask.png');
 
 
 %% ADMM with TV regularization
-% % This code is adapted from the EE 367 homework, but I redefined Afun and
-% % Atfun to work with my image formation model.
-% 
-% imageResolution = size(scene);
-% 
-% Afun = @(x) A*x(:);
-% Atfun = @(x) reshape(At*x, imageResolution);
-% AtAfun  = @(x) Atfun(Afun(x));
-% opDtDx  = @(x) opDtx(opDx(x));
-% 
-% numItersADMM    = 25;  % number of ADMM iterations
-% rho             = 1;
-% lambda          = 0.01;
-% 
-% x = zeros(imageResolution);
-% z = zeros([imageResolution(1) imageResolution(2) 2]);
-% u = zeros([imageResolution(1) imageResolution(2) 2]);
-% 
-% Hfun = @(x) reshape(AtAfun(reshape(x,imageResolution)) + rho.*opDtDx(reshape(x,imageResolution)), [prod(imageResolution) 1]); 
-% 
-% PSNR        = zeros([numItersADMM 1]);
-% residuals   = zeros([numItersADMM 1]);
-% 
-% figure(8);
-% for k=1:numItersADMM
-% 
-%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%     % x update 
-%     
-%     v = z-u;
-% 
-%     bb = Atfun(b) + rho*opDtx(v);
-% 
-%     maxItersCG = 25;
-%     x = pcg(Hfun,bb(:),1e-12,maxItersCG,[],[],x(:));    
-%     x = reshape(x, imageResolution);
-%     
-%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%     % z update - soft shrinkage
-%     
-%     kappa = lambda/rho;
-%     v = (opDx(x)+u); 
-%     z = max(1 - kappa/abs(v),0) .* v;
-%     
-%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%     % u update    
-%     u = u+opDx(x)-z;
-%     
-%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%     % PSNR & residual
-%     
-%     r1 = b-Afun(x);
-%     r2 = opDx(x); 
-%     residuals(k) = 0.5*sum(r1(:).^2) + lambda.*sum( abs(r2(:)) );  
-%     
-%     MSE     = mean( (x(:)-I(:)).^2 );
-%     PSNR(k) = 10*log10(1/MSE);
-%     
-%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%     % plot
-%     
-%     subplot(2,3,[1 4]);
-%     imshow(I);    
-%     title('Target Image');
-%     
-%     subplot(2,3,[2 5]);
-%     imshow(x);    
-%     title(['Compression=' num2str(compression) ', PSNR=' num2str(PSNR(k),'%3.2f') 'dB, \lambda=' num2str(lambda), ' \rho=' num2str(rho) ', noise \sigma=' num2str(sigma)]);    
-% 
-%     subplot(2,3,3);
-%     plot(1:numItersADMM, PSNR, 'LineWidth', 2, 'color', [1 0 1]);
-%     title('PSNR');
-%     xlabel('Iteration');
-%     ylabel('PSNR in dB');
-%     grid on;
-%     ylim([10 45]);
-%     
-%     subplot(2,3,6);
-%     plot(1:numItersADMM,log(residuals), 'LineWidth', 2);
-%     title('log(residual)');
-%     xlabel('Iteration');
-%     ylabel('Value');
-%     grid on;
-%     ylim([6 9]);
-%     
-%     drawnow;
-% end
-% 
-% sgtitle('ADMM TV');
-% set(gcf, 'Color', 'w');
-% set(gcf, 'Position', [100 100 1200 600]);
-% saveas(gcf, 'ADMM_TV.png');
+% This code is adapted from the EE 367 homework, but I redefined Afun and
+% Atfun to work with my image formation model.
+
+imageResolution = size(scene);
+
+A = H ./ max(max(H)); % normalized
+At = transpose(A);
+Afun = @(x) A*x(:);
+Atfun = @(x) reshape(At*x, imageResolution);
+AtAfun  = @(x) Atfun(Afun(x));
+opDtDx  = @(x) opDtx(opDx(x));
+
+numItersADMM    = 25;  % number of ADMM iterations
+rho             = 10;
+lambda          = 0.01;
+
+b = Afun(scene) + n;
+
+x = zeros(imageResolution);
+z = zeros([imageResolution(1) imageResolution(2) 2]);
+u = zeros([imageResolution(1) imageResolution(2) 2]);
+
+Hfun = @(x) reshape(AtAfun(reshape(x,imageResolution)) + rho.*opDtDx(reshape(x,imageResolution)), [prod(imageResolution) 1]); 
+
+PSNR        = zeros([numItersADMM 1]);
+residuals   = zeros([numItersADMM 1]);
+
+figure(8);
+tic
+for k=1:numItersADMM
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % x update 
+    
+    v = z-u;
+
+    bb = Atfun(b) + rho*opDtx(v);
+
+    maxItersCG = 25;
+    x = pcg(Hfun,bb(:), noise_sigma, maxItersCG,[],[],x(:));    
+    x = reshape(x, imageResolution);
+    % need to normalize displayed image to range [0, 1]
+    % otherwise all pixel values will be too small
+    x_scaled = x - min(min(x));
+    x_scaled = x_scaled ./ max(max(x_scaled));
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % z update - soft shrinkage
+    
+    kappa = lambda/rho;
+    v = (opDx(x)+u); 
+    z = max(1 - kappa/abs(v),0) .* v;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % u update    
+    u = u+opDx(x)-z;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % PSNR & residual
+    
+    r1 = b-Afun(x);
+    r2 = opDx(x); 
+    residuals(k) = 0.5*sum(r1(:).^2) + lambda.*sum( abs(r2(:)) );  
+    
+    MSE     = mean( (x_scaled(:)-I(:)).^2 );
+    PSNR(k) = 10*log10(1/MSE);
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % plot
+    
+    subplot(2,3,[1 4]);
+    imshow(I);    
+    title('Target Image');
+    
+    subplot(2,3,[2 5]);
+    imshow(x_scaled);    
+    title(sprintf('\\lambda = %g, \\rho = %g\nPSNR = %g dB\nRuntime = %g s', lambda, rho, PSNR(k), runtime_ADMM));
+
+    subplot(2,3,3);
+    plot(1:numItersADMM, PSNR, 'LineWidth', 2, 'color', [1 0 1]);
+    title('PSNR');
+    xlabel('Iteration');
+    ylabel('PSNR in dB');
+    grid on;
+    ylim([10 45]);
+    
+    subplot(2,3,6);
+    plot(1:numItersADMM,log(residuals), 'LineWidth', 2);
+    title('log(residual)');
+    xlabel('Iteration');
+    ylabel('Value');
+    grid on;
+    ylim([6 9]);
+    
+    drawnow;
+    
+    
+    sgtitle(sprintf('ADMM TV\n# Rotations = %g\nCompression = %g\nElectronic SNR = %g = %g dB', R, compression, electronic_SNR, 10*log10(electronic_SNR)));
+    set(gcf, 'Color', 'w');
+    set(gcf, 'Position', [100 100 1200 600]);
+end
+
+saveas(gcf, 'ADMM_TV_nomask.png');
