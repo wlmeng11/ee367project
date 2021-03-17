@@ -118,7 +118,7 @@ for r = 1:R
     axis square tight;
     xlabel('Element #');
     ylabel('Relative Delay (ns)');
-    title('Delay Mask (Simulation)');
+    title('Delay Profile');
 
     sgtitle(sprintf('Delay Mask, rotation %d', r));
     set(gcf, 'Color', 'w');

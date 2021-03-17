@@ -72,7 +72,7 @@ xdc_center_focus(Rx, [0 0 0]);
 xdc_focus(Rx,0,focus);
 
 %% Generate coded apertures and measure H
-R = 10; % number of rotations
+R = 4; % number of rotations
 H = 0; % placeholder to put H in global scope
 K = 0; % placeholder
 
@@ -113,7 +113,7 @@ for r = 1:R
     axis square tight;
     xlabel('Element #');
     ylabel('Relative Delay (ns)');
-    title('Delay Mask (Simulation)');
+    title('Delay Profile');
 
     sgtitle(sprintf('Delay Mask, rotation %d', r));
     set(gcf, 'Color', 'w');
@@ -327,14 +327,14 @@ runtime_pcg = toc;
 
 % Plot true image and reconstructed images
 figure(7);
-subplot(1, 3, 1);
+subplot(3, 1, 1);
 imagesc(scene);
 axis equal tight;
 colormap gray;
 colorbar;
 title('Ground Truth');
 
-subplot(1, 3, 2);
+subplot(3, 1, 2);
 imagesc(x_pcg2D);
 axis equal tight;
 colormap gray;
@@ -356,7 +356,7 @@ PSNR_pinv = 10*log10(1/MSE_pinv);
 fprintf('\nLeast Norm (Pseudo-inverse):\nMSE = %g\nPSNR = %g dB\n', MSE_pinv, PSNR_pinv);
 runtime_pinv = toc;
 
-subplot(1, 3, 3);
+subplot(3, 1, 3);
 imagesc(x_pinv2D);
 axis equal tight;
 colormap gray;
@@ -365,8 +365,8 @@ title(sprintf('Least Norm (Pseudo-inverse) Solution\ntolPinv = %g\nRuntime = %g 
 
 sgtitle(sprintf('Compressed Sensing Reconstruction\n# Rotations = %g\nCompression = %g\nElectronic SNR = %g = %g dB', R, compression, electronic_SNR, 10*log10(electronic_SNR)));
 set(gcf, 'Color', 'w');
-set(gcf, 'Position', [100 100 1200 400]);
-saveas(gcf, 'Reconstructed.png');
+set(gcf, 'Position', [100 100 400 900]);
+saveas(gcf, sprintf('Reconstructed_R=%d.png', R));
 
 %% ADMM with TV regularization
 % This code is adapted from the EE 367 homework, but I redefined Afun and

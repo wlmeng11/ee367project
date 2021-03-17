@@ -100,7 +100,7 @@ bar(1:tx_elem, delay_mask * 1e9);
 axis square tight;
 xlabel('Element #');
 ylabel('Relative Delay (ns)');
-title('Delay Mask (Simulation)');
+title('Delay Profile');
 
 sgtitle('Delay Mask')
 set(gcf, 'Color', 'w');
