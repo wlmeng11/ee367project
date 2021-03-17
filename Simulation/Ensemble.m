@@ -1,11 +1,16 @@
-% MultiRotation.m
+% Ensemble.m
 %
 % William Meng
-% March 15, 2021
+% March 16, 2021
 % EE 367 Final Project
 %
 % Perform 2D compressed sensing ultrasound imaging with a single
 % transducer, using multiple "rotations" (ie. multiple coded apertures).
+%
+% Instead of using the combined data from all the rotations to perform a
+% single reconstruction, compute an ensemble of reconstructions using the
+% data from an individual rotation or a small subset of the rotations, and 
+% then compute the ensemble average.
 
 clearvars; clc; close all;
 
@@ -297,7 +302,7 @@ set(gcf, 'Position', [100 100 1200 400]);
 saveas(gcf, 'Hv+n.png');
 
 %% Reconstruction
-% redefine them cuz they get overwritten by ADMM code
+% redefine v and u in case they get overwritten by ADMM code
 v = scene(:);
 u = Hv + n;
 

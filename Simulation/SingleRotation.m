@@ -271,8 +271,8 @@ set(gcf, 'Color', 'w');
 set(gcf, 'Position', [100 100 1200 400]);
 saveas(gcf, 'Hv+n.png');
 
-%% Reconstruction (single rotation)
-% redefine them cuz they get overwritten by ADMM code
+%% Reconstruction (Least Norm)
+% redefine v and u in case they get overwritten by ADMM code
 v = scene(:);
 u = Hv + n;
 
@@ -285,19 +285,24 @@ b = u; % measurement
 I = scene; % true image
 
 % Least Norm solution with Predetermined Conjugate Gradient (PCG)
-maxItersCG = 50;
-x = pcg(AAtfun, b(:), 1e-12, maxItersCG);
+tic
+maxItersCG = 1000;
+tolCG = noise_sigma;
+x = pcg(AAtfun, b(:), tolCG, maxItersCG);
 x_pcg = Atfun(x);
 x_pcg = x_pcg - min(x_pcg);
 x_pcg = x_pcg ./ max(x_pcg); % normalize to range [0, 1]
 x_pcg2D = reshape(x_pcg, size(scene)); % reshape into 2D image
 
-MSE_lnorm  = mean( (x_pcg - v).^2 );
-PSNR_lnorm = 10*log10(1/MSE_lnorm);
-fprintf('\nLeast Norm (PCG):\nMSE = %g\nPSNR = %g dB\n', MSE_lnorm, PSNR_lnorm);
+MSE_pcg  = mean( (x_pcg - v).^2 );
+PSNR_pcg = 10*log10(1/MSE_pcg);
+fprintf('\nLeast Norm (PCG):\nMSE = %g\nPSNR = %g dB\n', MSE_pcg, PSNR_pcg);
+runtime_pcg = toc;
 
 % Least Norm solution with Moore-Penrose Pseudo-inverse
-AAtinv = pinv(A*At);
+tic
+tolPinv = 0;
+AAtinv = pinv(A*At, tolPinv);
 x_pinv = Atfun(AAtinv * b);
 x_pinv = x_pinv - min(x_pinv);
 x_pinv = x_pinv ./ max(x_pinv); % normalize to range [0, 1]
@@ -306,126 +311,35 @@ x_pinv2D = reshape(x_pinv, size(scene));
 MSE_pinv  = mean( (x_pinv - v).^2 );
 PSNR_pinv = 10*log10(1/MSE_pinv);
 fprintf('\nLeast Norm (Pseudo-inverse):\nMSE = %g\nPSNR = %g dB\n', MSE_pinv, PSNR_pinv);
+runtime_pinv = toc;
 
 % Plot true image and reconstructed images
 figure(7);
-subplot(1, 3, 1);
+subplot(3, 1, 1);
 imagesc(scene);
 axis equal tight;
 colormap gray;
 colorbar;
 title('Ground Truth');
 
-subplot(1, 3, 2);
+subplot(3, 1, 2);
 imagesc(x_pcg2D);
 axis equal tight;
 colormap gray;
 colorbar;
-title(sprintf('Least Norm (PCG) Solution\nPSNR = %g dB', PSNR_lnorm));
+title(sprintf('Least Norm (PCG) Solution\nmaxItersCG = %g, tolCG = %g\nRuntime = %g s\nPSNR = %g dB', maxItersCG, tolCG, runtime_pcg, PSNR_pcg));
 
-subplot(1, 3, 3);
+subplot(3, 1, 3);
 imagesc(x_pinv2D);
 axis equal tight;
 colormap gray;
 colorbar;
-title(sprintf('Least Norm (Pseudo-inverse) Solution\nPSNR = %g dB', PSNR_pinv));
+title(sprintf('Least Norm (Pseudo-inverse) Solution\ntolPinv = %g\nRuntime = %g s\nPSNR = %g dB', tolPinv, runtime_pinv, PSNR_pinv));
 
-sgtitle(sprintf('Compressed Sensing Reconstruction\n# Rotations = %g\nCompression = %g\nElectronic SNR = %g', R, compression, electronic_SNR));
+sgtitle(sprintf('Compressed Sensing Reconstruction\nSingle Rotation\nCompression = %g\nElectronic SNR = %g', compression, electronic_SNR));
 set(gcf, 'Color', 'w');
-set(gcf, 'Position', [100 100 1200 400]);
+set(gcf, 'Position', [100 100 400 900]);
 saveas(gcf, 'Reconstructed.png');
 
 
 %% ADMM with TV regularization
-% % This code is adapted from the EE 367 homework, but I redefined Afun and
-% % Atfun to work with my image formation model.
-% 
-% imageResolution = size(scene);
-% 
-% Afun = @(x) A*x(:);
-% Atfun = @(x) reshape(At*x, imageResolution);
-% AtAfun  = @(x) Atfun(Afun(x));
-% opDtDx  = @(x) opDtx(opDx(x));
-% 
-% numItersADMM    = 25;  % number of ADMM iterations
-% rho             = 1;
-% lambda          = 0.01;
-% 
-% x = zeros(imageResolution);
-% z = zeros([imageResolution(1) imageResolution(2) 2]);
-% u = zeros([imageResolution(1) imageResolution(2) 2]);
-% 
-% Hfun = @(x) reshape(AtAfun(reshape(x,imageResolution)) + rho.*opDtDx(reshape(x,imageResolution)), [prod(imageResolution) 1]); 
-% 
-% PSNR        = zeros([numItersADMM 1]);
-% residuals   = zeros([numItersADMM 1]);
-% 
-% figure(8);
-% for k=1:numItersADMM
-% 
-%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%     % x update 
-%     
-%     v = z-u;
-% 
-%     bb = Atfun(b) + rho*opDtx(v);
-% 
-%     maxItersCG = 25;
-%     x = pcg(Hfun,bb(:),1e-12,maxItersCG,[],[],x(:));    
-%     x = reshape(x, imageResolution);
-%     
-%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%     % z update - soft shrinkage
-%     
-%     kappa = lambda/rho;
-%     v = (opDx(x)+u); 
-%     z = max(1 - kappa/abs(v),0) .* v;
-%     
-%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%     % u update    
-%     u = u+opDx(x)-z;
-%     
-%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%     % PSNR & residual
-%     
-%     r1 = b-Afun(x);
-%     r2 = opDx(x); 
-%     residuals(k) = 0.5*sum(r1(:).^2) + lambda.*sum( abs(r2(:)) );  
-%     
-%     MSE     = mean( (x(:)-I(:)).^2 );
-%     PSNR(k) = 10*log10(1/MSE);
-%     
-%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%     % plot
-%     
-%     subplot(2,3,[1 4]);
-%     imshow(I);    
-%     title('Target Image');
-%     
-%     subplot(2,3,[2 5]);
-%     imshow(x);    
-%     title(['Compression=' num2str(compression) ', PSNR=' num2str(PSNR(k),'%3.2f') 'dB, \lambda=' num2str(lambda), ' \rho=' num2str(rho) ', noise \sigma=' num2str(sigma)]);    
-% 
-%     subplot(2,3,3);
-%     plot(1:numItersADMM, PSNR, 'LineWidth', 2, 'color', [1 0 1]);
-%     title('PSNR');
-%     xlabel('Iteration');
-%     ylabel('PSNR in dB');
-%     grid on;
-%     ylim([10 45]);
-%     
-%     subplot(2,3,6);
-%     plot(1:numItersADMM,log(residuals), 'LineWidth', 2);
-%     title('log(residual)');
-%     xlabel('Iteration');
-%     ylabel('Value');
-%     grid on;
-%     ylim([6 9]);
-%     
-%     drawnow;
-% end
-% 
-% sgtitle('ADMM TV');
-% set(gcf, 'Color', 'w');
-% set(gcf, 'Position', [100 100 1200 600]);
-% saveas(gcf, 'ADMM_TV.png');

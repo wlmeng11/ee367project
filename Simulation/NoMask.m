@@ -262,7 +262,7 @@ axis image;
 title('A-mode image (unfocused transducer)');
 saveas(gcf, 'A-mode.png');
 
-%% Reconstruction (single rotation)
+%% Reconstruction (Least Norm)
 % redefine v and u in case they get overwritten by ADMM code
 v = scene(:);
 u = Hv + n;
@@ -306,21 +306,21 @@ runtime_pinv = toc;
 
 % Plot true image and reconstructed images
 figure(7);
-subplot(1, 3, 1);
+subplot(3, 1, 1);
 imagesc(scene);
 axis equal tight;
 colormap gray;
 colorbar;
 title('Ground Truth');
 
-subplot(1, 3, 2);
+subplot(3, 1, 2);
 imagesc(x_pcg2D);
 axis equal tight;
 colormap gray;
 colorbar;
 title(sprintf('Least Norm (PCG) Solution\nmaxItersCG = %g, tolCG = %g\nRuntime = %g s\nPSNR = %g dB', maxItersCG, tolCG, runtime_pcg, PSNR_pcg));
 
-subplot(1, 3, 3);
+subplot(3, 1, 3);
 imagesc(x_pinv2D);
 axis equal tight;
 colormap gray;
@@ -329,7 +329,7 @@ title(sprintf('Least Norm (Pseudo-inverse) Solution\ntolPinv = %g\nRuntime = %g 
 
 sgtitle(sprintf('Compressed Sensing Reconstruction\nNo Mask\nCompression = %g\nElectronic SNR = %g', compression, electronic_SNR));
 set(gcf, 'Color', 'w');
-set(gcf, 'Position', [100 100 1200 400]);
+set(gcf, 'Position', [100 100 400 900]);
 saveas(gcf, 'Reconstructed_NoMask.png');
 
 
@@ -400,6 +400,7 @@ for k=1:numItersADMM
     
     MSE     = mean( (x_scaled(:)-I(:)).^2 );
     PSNR(k) = 10*log10(1/MSE);
+    runtime_ADMM = toc;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % plot

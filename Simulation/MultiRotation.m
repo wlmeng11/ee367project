@@ -297,7 +297,7 @@ set(gcf, 'Position', [100 100 1200 400]);
 saveas(gcf, 'Hv+n.png');
 
 %% Reconstruction
-% redefine them cuz they get overwritten by ADMM code
+% redefine v and u in case they get overwritten by ADMM code
 v = scene(:);
 u = Hv + n;
 
