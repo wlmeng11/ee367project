@@ -445,7 +445,7 @@ for k=1:numItersADMM
     
     subplot(2,3,[2 5]);
     imshow(x_scaled);    
-    title(['PSNR=' num2str(PSNR(k),'%3.2f') 'dB, \lambda=' num2str(lambda), ' \rho=' num2str(rho) ', noise \sigma=' num2str(sigma)]);    
+    title(sprintf('\\lambda = %g, \\rho = %g\nPSNR = %g dB', lambda, rho, PSNR(k)));
 
     subplot(2,3,3);
     plot(1:numItersADMM, PSNR, 'LineWidth', 2, 'color', [1 0 1]);
@@ -464,10 +464,11 @@ for k=1:numItersADMM
     ylim([6 9]);
     
     drawnow;
+    
+    runtime_ADMM = toc;
+    sgtitle(sprintf('ADMM TV\n# Rotations = %g\nCompression = %g\nElectronic SNR = %g = %g dB\nRuntime = %g s', R, compression, electronic_SNR, 10*log10(electronic_SNR), runtime_ADMM));
+    set(gcf, 'Color', 'w');
+    set(gcf, 'Position', [100 100 1200 600]);
 end
-runtime_ADMM = toc;
 
-sgtitle(sprintf('ADMM TV\n# Rotations = %g\nCompression = %g\nElectronic SNR = %g = %g dB\nRuntime = %g s', R, compression, electronic_SNR, 10*log10(electronic_SNR), runtime_ADMM));
-set(gcf, 'Color', 'w');
-set(gcf, 'Position', [100 100 1200 600]);
 saveas(gcf, 'ADMM_TV.png');
