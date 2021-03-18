@@ -438,3 +438,11 @@ for k=1:numItersADMM
 end
 
 saveas(gcf, 'ADMM_TV_nomask.png');
+
+%% Nice plots for figures
+figure;
+plot(envelope(hhp(:, 500)));
+axis off;
+set(gcf, 'Color', 'w');
+set(gcf, 'Position', [100 100 100 100]);
+saveas(gcf, 'A-mode_waveform.png');

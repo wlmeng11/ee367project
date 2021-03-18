@@ -233,11 +233,12 @@ set(gcf, 'Position', [100 100 800 400]);
 saveas(gcf, 'TrueImage.png');
 
 %% Image formation model
+v = scene(:);
 Hv = H * v;
 
 % Add Gaussian noise
 rng(s);
-electronic_SNR = 1e9;
+electronic_SNR = 1e2;
 noise_sigma = max(Hv)/electronic_SNR;
 n = noise_sigma * randn(size(Hv));
 u = Hv + n;
@@ -447,3 +448,19 @@ for k=1:numItersADMM
 end
 
 saveas(gcf, 'ADMM_TV_singlerotation.png');
+
+%% Nice plots of Tx and Rx signals
+
+figure;
+plot(impulseResponse);
+axis off;
+set(gcf, 'Color', 'w');
+set(gcf, 'Position', [100 100 100 100]);
+saveas(gcf, 'TxSignal.png');
+
+figure;
+plot(hhp(:, 500));
+axis off;
+set(gcf, 'Color', 'w');
+set(gcf, 'Position', [100 100 100 100]);
+saveas(gcf, 'RxSignal.png');
