@@ -1,11 +1,12 @@
-% NoMask.m
+% Focused.m
 %
 % William Meng
-% March 16, 2021
+% March 17, 2021
 % EE 367 Final Project
 %
 % Show how a single transducer without a coded mask aperture cannot measure
 % any lateral information in the image.
+% This time the transducer is focused.
 
 clearvars; clc; close all;
 
@@ -71,26 +72,6 @@ xdc_impulse(Rx,impulseResponse);
 xdc_center_focus(Rx, [0 0 0]);
 xdc_focus(Rx,0,focus);
 
-%% No mask
-% Set uniform delays across transducer
-delay_mask = zeros(tx_elem, 1);
-
-figure(1);
-bar(1:tx_elem, delay_mask * 1e9);
-axis square tight;
-xlabel('Element #');
-ylabel('Relative Delay (ns)');
-title('No Mask (unfocused transducer)');
-
-set(gcf, 'Color', 'w');
-set(gcf, 'Position', [100 100 400 400]);
-saveas(gcf, 'NoMask.png');
-
-% Set the Tx and Rx delays
-xdc_focus_times(Tx, 0, transpose(delay_mask));
-xdc_focus_times(Rx, 0, transpose(delay_mask));
-Tx_timeline = xdc_get(Tx, 'focus');
-Rx_timeline = xdc_get(Rx, 'focus');
 
 %% Measure pulse-echo response
 % (This code is adapted from the RAD 235 homework)
@@ -440,9 +421,10 @@ end
 saveas(gcf, 'ADMM_TV_nomask.png');
 
 %% Nice plots for figures
-figure;
-plot(envelope(hhp(:, 500)));
+figure(10);
+tgc_gain = 0;
+plot(envelope(Hv) .* transpose(exp(tgc_gain/K*(1:K))), 'LineWidth', 2);
 axis off;
 set(gcf, 'Color', 'w');
-set(gcf, 'Position', [100 100 100 100]);
-saveas(gcf, 'A-mode_waveform.png');
+set(gcf, 'Position', [100 100 200 200]);
+saveas(gcf, 'A-mode_envelope.png');
