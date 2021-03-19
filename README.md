@@ -1,7 +1,10 @@
 # Single-Element Ultrasound Imaging with Compressed Sensing
 William Meng  
+wlmeng@stanford.edu  
 EE 367 Final Project  
 March 19, 2021
+
+A current version of the code can be found in the [Github repository](ADD LINK HERE).
 
 # Installation
 ## MATLAB
@@ -23,7 +26,7 @@ A few versions of the script are provided:
 * *MultiRotation.m* - Simulation and reconstruction with a delay mask rotated multiple times. With R=4 rotations, the reconstructed image looks very good.
 
 The key parameters (R, electronic SNR, etc.) can be adjusted at the top of the file.
-When you run each script, it will display some figures and save them as images in your current working directory.
+When you run each script in MATLAB, it will display some figures and save them as images in your current working directory.
 
 # Acknowledgements
 The techniques used in this project are primarily based on the following [paper](https://advances.sciencemag.org/content/3/12/e1701423):
