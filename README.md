@@ -4,7 +4,8 @@ wlmeng@stanford.edu
 EE 367 Final Project  
 March 19, 2021
 
-A current version of the code can be found in the [Github repository](ADD LINK HERE).
+A current version of the code can be found in the [Github repository](https://github.com/wlmeng11/ee367project).
+Please see the [project page on my website](https://williammeng.com/ee367.html) for additional media.
 
 # Installation
 ## MATLAB
@@ -12,8 +13,7 @@ Make sure you have a recent version of [MATLAB](https://www.mathworks.com/produc
 
 ## Field II
 This project utilizes the Field II ultrasound simulation library.
-The Linux version is bundled in this repository for convenience.
-If you are using another operating system, please download and install the appropriate version of Field II from [here](https://field-ii.dk/?./downloading_8_20.html).
+Please download and install the appropriate version of Field II from [here](https://field-ii.dk/?./downloading_8_20.html).
 
 To install the library, you will have to add the Field II subdirectory to your MATLAB path.
 You can do this by right-clicking the Field II subdirectory in MATLAB's file explorer, and then choosing *Add to Path -> Selected Folders*.
